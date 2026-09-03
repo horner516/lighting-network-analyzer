@@ -1,6 +1,6 @@
 {
   "appId": "com.luxlink.lighting-network-analyzer",
-  "productName": "Lighting Network Analyzer",
+  "productName": "Lux Link",
   "directories": {
     "output": "desktop-dist"
   },
@@ -18,7 +18,7 @@
   "win": {
     "icon": "public/app-icon.ico",
     "target": [{ "target": "nsis", "arch": ["x64"] }],
-    "artifactName": "Lighting-Network-Analyzer-${version}-windows-${arch}.${ext}"
+    "artifactName": "Lux-Link-${version}-windows-${arch}.${ext}"
   },
   "nsis": {
     "oneClick": false,
@@ -31,7 +31,7 @@
     "category": "public.app-category.utilities",
     "icon": "public/app-icon.icns",
     "target": ["dmg", "zip"],
-    "artifactName": "Lighting-Network-Analyzer-${version}-mac-${arch}.${ext}"
+    "artifactName": "Lux-Link-${version}-mac-${arch}.${ext}"
   },
   "publish": [
     {

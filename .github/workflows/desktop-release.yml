@@ -16,11 +16,11 @@ jobs:
           - os: windows-latest
             name: windows
             args: --win --x64
-            executable: desktop-dist/win-unpacked/Lighting Network Analyzer.exe
+            executable: desktop-dist/win-unpacked/Lux Link.exe
           - os: macos-latest
             name: mac
             args: --mac --universal
-            executable: desktop-dist/mac-universal/Lighting Network Analyzer.app/Contents/MacOS/Lighting Network Analyzer
+            executable: desktop-dist/mac-universal/Lux Link.app/Contents/MacOS/Lux Link
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -68,6 +68,6 @@ jobs:
         run: |
           cd release-assets
           sha256sum *.exe *.dmg *.zip > SHA256SUMS.txt
-          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag --title "Lighting Network Analyzer $GITHUB_REF_NAME" --notes-file ../RELEASE_NOTES.md --draft
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag --title "Lux Link $GITHUB_REF_NAME" --notes-file ../RELEASE_NOTES.md --draft
           gh release upload "$GITHUB_REF_NAME" * --repo "$GITHUB_REPOSITORY"
           gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false --latest

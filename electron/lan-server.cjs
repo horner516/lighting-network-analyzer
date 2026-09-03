@@ -3,6 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { networkInterfaces } = require('node:os');
 const { createSignalListener } = require('./signal-listener.cjs');
+const { createDevicePoller } = require('./netron-api.cjs');
 
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.woff2': 'font/woff2' };
 
@@ -18,6 +19,7 @@ async function startLanServer({ root, preferredPort = 47652, host = '0.0.0.0', l
   const base = path.resolve(root);
   if (!fs.existsSync(path.join(base, 'index.html'))) throw new Error('The bundled dashboard is missing. Reinstall the app.');
   let listener;
+  const devicePoller = createDevicePoller({ artnetPoll: ip => listener.pollNode(ip) });
   const server = http.createServer((req, res) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Cache-Control', 'no-store');
@@ -39,7 +41,7 @@ async function startLanServer({ root, preferredPort = 47652, host = '0.0.0.0', l
       res.setHeader('Content-Type', 'application/json');
       if (req.headers['sec-fetch-site'] === 'cross-site' || (req.headers.origin && req.headers.origin !== `http://${req.headers.host}`)) { res.writeHead(403); res.end('{}'); return; }
       if (!listener || req.method === 'HEAD') { res.writeHead(503); res.end(); return; }
-      listener.pollNode(new URL(req.url, 'http://localhost').searchParams.get('ip') || '').then(result => res.end(JSON.stringify(result))).catch(error => { res.writeHead(error instanceof RangeError ? 400 : 503); res.end(JSON.stringify({ error: error.message })); });
+      devicePoller.poll(new URL(req.url, 'http://localhost').searchParams.get('ip') || '').then(result => res.end(JSON.stringify(result))).catch(error => { res.writeHead(error instanceof RangeError ? 400 : 503); res.end(JSON.stringify({ error: error.message })); });
       return;
     }
     if (pathname === '/api/signals/channel') {

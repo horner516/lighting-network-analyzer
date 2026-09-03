@@ -1,4 +1,4 @@
-# Lighting Network Analyzer
+# Lux Link
 
 Standalone desktop and web dashboard for monitoring lighting network devices (sACN, Art-Net, grandMA, ETC, TMB ProPlex, Obsidian/NETRON).
 
@@ -8,22 +8,28 @@ The installers include the app and its LAN server. **No Node.js or developer too
 
 | Platform | Download | Compatibility |
 | --- | --- | --- |
-| Windows | [Download Windows installer](https://github.com/horner516/lighting-network-analyzer/releases/download/v0.1.3/Lighting-Network-Analyzer-0.1.3-windows-x64.exe) | Windows 10 or later, 64-bit |
-| macOS | [Download Mac installer](https://github.com/horner516/lighting-network-analyzer/releases/download/v0.1.3/Lighting-Network-Analyzer-0.1.3-mac-universal.dmg) | Universal: Apple silicon and Intel |
+| Windows | [Download Windows installer](https://github.com/horner516/lighting-network-analyzer/releases/download/v0.1.4/Lux-Link-0.1.4-windows-x64.exe) | Windows 10 or later, 64-bit |
+| macOS | [Download Mac installer](https://github.com/horner516/lighting-network-analyzer/releases/download/v0.1.4/Lux-Link-0.1.4-mac-universal.dmg) | Universal: Apple silicon and Intel |
 
 See [all releases and checksums](https://github.com/horner516/lighting-network-analyzer/releases). GitHub's automatic **Source code** downloads are not installable apps.
 
 **Initial release:** installers are unsigned and the Mac app is not notarized. Your operating system may show an unknown-publisher warning. On Mac, open the disk image, drag the app to Applications, then approve it in System Settings → Privacy & Security if required by your system. Follow your organization's software policy.
 
-**Version 0.1.3:** includes sACN and Art-Net reception, live channel values, and read-only Art-Net device polling. Add by IP saves a device and requests its available identity and port information. No simulated devices are included. A status reply is not a continuous health check. See the [changelog](CHANGELOG.md).
+**Version 0.1.4:** now named Lux Link, with read-only NETRON web API polling and the EN12’s physical single-row port layout. Also includes sACN and Art-Net reception, live channel values, and read-only Art-Net device polling. Add by IP saves a device and requests its available identity and port information. No simulated devices are included. A status reply is not a continuous health check. See the [changelog](CHANGELOG.md).
 
 ## Device cards and polling
 
-Added devices appear as compact port cards. **Poll Nodes** refreshes identity and status using ArtPoll and an ArtIpProg enquiry with all programming bits cleared. No configuration or lighting output is sent. Polling also runs when the page loads and when an IP is added; requests run sequentially and repeated requests are briefly cached.
+### NETRON web API
 
-ProPlex IQ Two cards use physical A–P labels, excluding secondary merge inputs and master-control bindings. Layouts follow the earlier reference: 16 ports in two rows of eight, eight ports in one row, and six ports in two rows of three. Other devices show the port bindings they report. A port opens a read-only detail panel.
+The local app detects NETRON devices through their web-monitor JSON API and reads `Setting.json`, `index.json`, `IP.json`, and `DMXPorts.json`. Verified with an EN12 running V2.9.2. It retrieves device name/model, firmware, MAC, on-time, subnet mask, direction, protocol, universe, RDM configuration, frame rate, merge mode and channel range. All requests are read-only; no cue recall, configuration changes or firmware actions are performed.
 
-**Known limitation verified on IQ Two 1616:** its Art-Net reply supplies identity and port labels, but does not expose its current sACN universe assignments or RDM setting. A zero Art-Net PortType is therefore shown as **Unknown**, not as a disabled physical port. Subnet mask is shown only when the node answers the IP enquiry. The app does not infer these fields from traffic or from a saved screenshot. Use the device's own web page for unreported settings.
+Global RDM processing and per-port RDM must both be enabled for the card to show RDM on. Art-Net tile universes follow the device web monitor's numbering preference; native addresses are preserved in port details. Configured frame rate is not measured traffic. Failed optional endpoints produce partial information with an explicit warning. Devices that do not identify as NETRON retain Art-Net polling.
+
+Added devices appear as compact port cards. **Poll Nodes** refreshes NETRON configuration through its web API. Other nodes use ArtPoll and an ArtIpProg enquiry with all programming bits cleared. No configuration or lighting output is sent. Polling also runs when the page loads and when an IP is added; requests run sequentially and repeated requests are briefly cached.
+
+ProPlex IQ Two cards use physical A–P labels, excluding secondary merge inputs and master-control bindings. Layouts follow the earlier reference: 16 ports in two rows of eight, eight ports in one row, and six ports in two rows of three. NETRON EN12 cards display all twelve ports in one physical row, left to right. Other devices show the port bindings they report. A port opens a read-only detail panel.
+
+**Known limitation verified on IQ Two 1616:** its Art-Net reply supplies identity and port labels, but does not expose its current sACN universe assignments or RDM setting. A zero Art-Net PortType is therefore shown as **Unknown**, not as a disabled physical port. Subnet mask is shown only when the node answers the IP enquiry. The app does not infer these fields from traffic or from a saved screenshot. The ProPlex web-monitor integration is not included yet. Use the device's own web page for unreported settings.
 
 Polling requires the updated local LAN app. The hosted website cannot send Art-Net packets onto your LAN. Supported target addresses are private LAN hosts and the lighting convention of 2.x addresses. Only explicitly added IPs are queried; this is not a subnet scanner.
 
@@ -131,5 +137,5 @@ The page now shows the active access URL at the top of the dashboard header and 
 
 ## Important notes
 
-- No sample devices, traffic graphs, health percentages, discovery timestamps, or uptime readings are included.
+- No simulated devices or readings are included. NETRON on-time is reported by the device, not inferred.
 - Automatic device discovery and device hardware-health monitoring remain separate, unimplemented capabilities. The included listeners report observed lighting streams only.

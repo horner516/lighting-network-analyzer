@@ -16,7 +16,7 @@ test('packaged server skips occupied ports and serves dashboard, assets and actu
     const home = await fetch(lan.url);
     const html = await home.text();
     assert.equal(home.status, 200);
-    assert.match(html, /Lighting Network Analyzer/);
+    assert.match(html, /Lux Link/);
     const script = html.match(/src="([^"]+\.js)"/)[1];
     assert.equal((await fetch(lan.url + script)).status, 200);
     const info = await fetch(lan.url + '/api/server-info').then(res => res.json());

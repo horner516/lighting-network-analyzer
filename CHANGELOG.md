@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.4 — 2026-09-03
+
+- Renamed the app, installers and dashboard to **Lux Link**, preserving the app identifier and saved browser data.
+- NETRON EN12 cards now match the physical front panel: twelve compact ports in one row, numbered 1–12.
+
+- Added read-only NETRON web API integration for device identity, firmware, MAC, subnet mask and port configuration; tested with an EN12 at firmware V2.9.2.
+- NETRON cards expose direction, universe, protocol, effective RDM state, configured frame rate, merge mode and channel range. Art-Net numbering matches the device's web monitor, with native addresses in port details.
+- Unknown or unavailable fields remain unreported; configuration never implies live signal presence. Non-NETRON devices retain Art-Net polling.
+- ProPlex web-monitor support remains pending; unreported sACN/RDM configuration stays unknown.
+
 ## 0.1.3 — 2026-09-03
 
 - Added read-only Art-Net polling when loading or adding saved devices, plus a **Poll Nodes** button.

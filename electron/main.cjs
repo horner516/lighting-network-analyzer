@@ -18,7 +18,7 @@ function showDashboard() {
   if (mainWindow) { mainWindow.show(); mainWindow.focus(); return; }
   mainWindow = new BrowserWindow({
     width: 1360, height: 920, minWidth: 800, minHeight: 600,
-    icon: iconPath, title: `Lighting Network Analyzer v${app.getVersion()}`,
+    icon: iconPath, title: `Lux Link v${app.getVersion()}`,
     webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true },
   });
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -84,6 +84,9 @@ function setupUpdater() {
   void checkForUpdates();
 }
 
+// Preserve saved browser data and single-instance identity across the Lux Link rename.
+app.setPath('userData', join(app.getPath('appData'), 'lighting-network-analyzer'));
+
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
@@ -101,14 +104,14 @@ if (!app.requestSingleInstanceLock()) {
     }
     const trayImage = nativeImage.createFromPath(iconPath);
     tray = new Tray(process.platform === 'darwin' ? trayImage.resize({ width: 22, height: 22 }) : trayImage);
-    tray.setToolTip('Lighting Network Analyzer');
+    tray.setToolTip('Lux Link');
     refreshMenu();
     tray.on('double-click', showDashboard);
     showDashboard();
     setupUpdater();
   }).catch(error => {
     if (process.env.LNA_SMOKE_TEST === '1') { console.error(error); app.exit(1); return; }
-    dialog.showErrorBox('Unable to start Lighting Network Analyzer', String(error.message || error));
+    dialog.showErrorBox('Unable to start Lux Link', String(error.message || error));
     app.quit();
   });
 }
