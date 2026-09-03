@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { Radio } from 'lucide-react';
+import { ChannelViewer } from '@/components/channel-viewer';
 
 type Signal = { id: string; protocol: string; universe: number; ip: string; cid: string; sourceName: string; priority: number | null; status: string; lastSeen: number; rate: number; packets: number; slots: number; nonzero: number; previewLevels: number[] };
 type Snapshot = { available: boolean; sampledAt: number; universeSpec: string; droppedSources: number; protocols: Record<string, { port: number; status: string; error: string; received: number; ignored: number; peakRate: number }>; memberships: { name: string; address: string; joined: number; failed: number; error: string }[]; signals: Signal[] };
@@ -33,8 +34,9 @@ export function SignalMonitor({ compact = false }: { compact?: boolean }) {
     return () => { disposed = true; clearTimeout(timer); controller?.abort(); };
   }, []);
   const detail = data?.signals.find(s => s.id === selected);
-  return <section aria-label="Network signals" className="overflow-hidden rounded-lg border border-white/10 bg-[#171d22]">
-    {!compact && <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 p-4"><div><h2 className="flex items-center gap-2 font-semibold"><Radio size={18} className="text-teal-300"/>Network signals</h2><p className="mt-1 text-sm text-slate-400">sACN & Art-Net · received by this server · no lighting data transmitted</p></div><span role="status" className="text-sm text-slate-400">{state === 'connected' ? 'Receiver connected' : state === 'connecting' ? 'Connecting to receiver…' : 'Local receiver unavailable'}</span></div>}
+  return <section aria-label="Network" className="overflow-hidden rounded-lg border border-white/10 bg-[#171d22]">
+    {!compact && <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 p-4"><div><h2 className="flex items-center gap-2 font-semibold"><Radio size={18} className="text-teal-300"/>Network</h2><p className="mt-1 text-sm text-slate-400">sACN & Art-Net · received by this server · no lighting data transmitted</p></div><span role="status" className="text-sm text-slate-400">{state === 'connected' ? 'Receiver connected' : state === 'connecting' ? 'Connecting to receiver…' : 'Local receiver unavailable'}</span></div>}
+    {!compact && <ChannelViewer />}
     <div className="grid gap-3 p-4 sm:grid-cols-2">{['sACN', 'Art-Net'].map(protocol => {
       const listener = data?.protocols[protocol];
       const active = data?.signals.filter(s => s.protocol === protocol && s.status === 'present') || [];
