@@ -28,6 +28,7 @@ GitHub's automatic **Source code** downloads are not installable apps. Until ins
 ## Start the web app for LAN use
 
 By default, the app uses port **47652** (high-numbered port to reduce service conflicts).
+If that port is already occupied, the server automatically tries the next available port. The desktop app follows the actual listening port; it does not open the other application's service.
 
 ```bash
 cd /path/to/lighting-analyzer
@@ -38,6 +39,8 @@ pnpm run start:lan
 The server binds to `0.0.0.0` so other devices on your subnet can open:
 
 `http://<server-ip>:47652`
+
+Use the **Server IP / port** links at the top of the dashboard for the actual address. Multiple active IPv4 network interfaces are listed, and the list refreshes every 15 seconds. Choose the address on the same network as your other devices. A hosted website shows its web address instead; it cannot determine your local server's IP.
 
 You can override:
 

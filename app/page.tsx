@@ -52,6 +52,7 @@ export default function Home() {
   const [newName, setNewName] = useState('');
   const [addError, setAddError] = useState('');
   const [serverUrl, setServerUrl] = useState('...');
+  const [lanUrls, setLanUrls] = useState<string[]>([]);
   const visible = useMemo(() => deviceList.filter(d => (filter === 'All' || d.state === filter) && `${d.name} ${d.model} ${d.ip} ${d.protocol}`.toLowerCase().includes(query.toLowerCase())), [deviceList, query, filter]);
   const onlineCount = useMemo(() => deviceList.filter(d => d.state !== 'Offline').length, [deviceList]);
   const offlineCount = useMemo(() => deviceList.filter(d => d.state === 'Offline').length, [deviceList]);
@@ -96,6 +97,15 @@ export default function Home() {
       const { host, protocol } = window.location;
       setServerUrl(`${protocol}//${host}`);
     }
+    const controller = new AbortController();
+    const refresh = () => fetch('/api/server-info', { signal: controller.signal, cache: 'no-store' })
+      .then(response => response.ok ? response.json() : null)
+      .then(info => {
+        if (Array.isArray(info?.urls)) setLanUrls(info.urls.filter((url: unknown) => typeof url === 'string' && /^http:\/\/[\da-fA-F.:\[\]]+:\d+$/.test(url)));
+      }).catch(() => {});
+    void refresh();
+    const interval = setInterval(refresh, 15000);
+    return () => { controller.abort(); clearInterval(interval); };
   }, []);
 
   useEffect(() => {
@@ -126,9 +136,9 @@ export default function Home() {
           <div className="flex items-center gap-3"><div className="grid size-9 place-items-center rounded-md border border-teal-300/30 bg-teal-300/10 text-teal-300"><Activity size={19}/></div><div><div className="text-[15px] font-bold tracking-wide">LUX<span className="text-teal-300">//</span>LINK</div><div className="text-[11px] tracking-[.18em] text-slate-500">NETWORK ANALYZER</div></div></div>
           <div className="hidden items-center gap-5 text-sm text-slate-400 sm:flex"><span className="flex items-center gap-2"><span className="size-2 rounded-full bg-emerald-400 shadow-[0_0_10px_#34d399]"/>Listening on en0</span><span>10.101.0.0/16</span><Button size="sm" variant="outline" className="border-white/10 bg-white/5"><RefreshCw size={14}/> Rescan</Button></div>
         </div>
-        <div className="mx-auto flex max-w-[1600px] gap-3 border-b border-white/10 px-4 pb-3 pt-2 text-xs text-slate-400 lg:px-7">
-          <span className="text-slate-500">Server:</span>
-          <a href={serverUrl} target="_blank" rel="noreferrer" className="font-mono text-teal-300 underline decoration-white/30 hover:decoration-white/70">{serverUrl}</a>
+        <div className="mx-auto flex max-w-[1600px] flex-wrap gap-3 border-b border-white/10 px-4 pb-3 pt-2 text-sm text-slate-400 lg:px-7">
+          <span className="text-slate-500">{lanUrls.length ? 'Server IP / port:' : 'Server address:'}</span>
+          {(lanUrls.length ? lanUrls : [serverUrl]).map(url => <a key={url} href={url === '...' ? undefined : url} target="_blank" rel="noreferrer" className="break-all font-mono text-teal-300 underline decoration-white/30 hover:decoration-white/70">{url}</a>)}
         </div>
       </header>
 

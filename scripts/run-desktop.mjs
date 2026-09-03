@@ -3,7 +3,7 @@ import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 
 const require = createRequire(import.meta.url);
-const electronPath = require.resolve('electron');
+const electronPath = require('electron');
 const projectRoot = join(process.cwd(), '');
 const port = process.env.NETWORK_ANALYZER_PORT || '47652';
 const host = process.env.NETWORK_ANALYZER_HOST || '0.0.0.0';

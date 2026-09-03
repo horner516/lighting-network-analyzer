@@ -73,6 +73,9 @@
       "scripts/**/*",
       "electron/**/*",
       "package.json",
+      "vite.config.ts",
+      "next.config.ts",
+      ".openai/hosting.json",
       "next-env.d.ts",
       "tsconfig.json",
       "components.json"

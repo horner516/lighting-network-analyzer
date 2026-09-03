@@ -12,8 +12,7 @@ const HOST = process.env.NETWORK_ANALYZER_HOST || '0.0.0.0';
 
 function getVinextExecutable() {
   const candidates = [
-    join(projectRoot, 'node_modules', '.bin', process.platform === 'win32' ? 'vinext.cmd' : 'vinext'),
-    join(projectRoot, 'node_modules', '.bin', 'vinext'),
+    join(projectRoot, 'node_modules', 'vinext', 'dist', 'cli.js'),
   ];
 
   const found = candidates.find(existsSync);
@@ -25,21 +24,25 @@ function getVinextExecutable() {
 }
 
 function startServer() {
+  if (!/^\d+$/.test(PORT) || Number(PORT) < 1024 || Number(PORT) > 65535) {
+    throw new Error('NETWORK_ANALYZER_PORT must be an integer from 1024 to 65535.');
+  }
   const command = getVinextExecutable();
-  const args = ['dev', '--hostname', HOST, '--port', PORT];
-  const shell = process.platform === 'win32';
+  const args = [command, 'dev', '--hostname', HOST, '--port', PORT];
 
-  const child = spawn(command, args, {
+  const child = spawn(process.execPath, args, {
     cwd: projectRoot,
-    stdio: 'inherit',
-    shell,
+    stdio: ['inherit', 'inherit', 'inherit', 'ipc'],
     env: { ...process.env, NETWORK_ANALYZER_PORT: PORT, NETWORK_ANALYZER_HOST: HOST, PORT },
   });
+  child.on('message', message => process.send?.(message));
+  child.on('error', error => { console.error(error); process.exitCode = 1; });
+  for (const signal of ['SIGINT', 'SIGTERM']) {
+    process.on(signal, () => child.kill(signal));
+  }
 
   child.on('exit', (code) => {
-    if (code !== 0) {
-      process.exit(code ?? 1);
-    }
+    process.exit(code ?? 1);
   });
 }
 

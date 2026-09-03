@@ -1,4 +1,5 @@
-const { app, BrowserWindow, Menu, shell, Tray, nativeImage, autoUpdater, dialog } = require('electron');
+const { app, BrowserWindow, Menu, shell, Tray, nativeImage, dialog } = require('electron');
+const { autoUpdater } = require('electron-updater');
 const { spawn } = require('node:child_process');
 const { existsSync } = require('node:fs');
 const { join } = require('node:path');
@@ -7,7 +8,7 @@ const PORT = Number(process.env.NETWORK_ANALYZER_PORT || 47652);
 const HOST = process.env.NETWORK_ANALYZER_HOST || '0.0.0.0';
 const SERVER_URL = `http://localhost:${PORT}`;
 
-const APP_ORIGIN = SERVER_URL;
+let APP_ORIGIN = SERVER_URL;
 const SERVER_START_DELAY_MS = 1000;
 const UPDATER_POLL_MS = 30 * 60 * 1000;
 
@@ -88,24 +89,39 @@ function createTray() {
 }
 
 function spawnServer() {
+  return new Promise((resolve, reject) => {
   const startScript = join(__dirname, '..', 'scripts', 'start-lan.mjs');
   const child = spawn(process.execPath, [startScript], {
     cwd: join(__dirname, '..'),
-    stdio: 'ignore',
+    stdio: ['ignore', 'ignore', 'ignore', 'ipc'],
     env: {
       ...process.env,
+      ELECTRON_RUN_AS_NODE: '1',
       NETWORK_ANALYZER_PORT: String(PORT),
       NETWORK_ANALYZER_HOST: HOST,
     },
   });
   serverProcess = child;
+  const timeout = setTimeout(() => reject(new Error('Server startup timed out.')), 60000);
+  child.on('message', message => {
+    if (message?.type !== 'server-ready') return;
+    clearTimeout(timeout);
+    const localHost = HOST === '0.0.0.0' ? '127.0.0.1' : HOST === '::' ? '[::1]' : HOST.includes(':') ? `[${HOST}]` : HOST;
+    APP_ORIGIN = `http://${localHost}:${message.port}`;
+    resolve();
+  });
   child.on('error', (error) => {
+    clearTimeout(timeout);
+    reject(error);
     void dialog.showErrorBox('Failed to start server', String(error.message || error));
   });
   child.on('exit', (code) => {
+    clearTimeout(timeout);
+    reject(new Error(`Server exited before startup (code ${code}).`));
     if (code !== 0 && code !== null) {
       dialog.showErrorBox('Server stopped', `LAN server exited with code ${code}.`);
     }
+  });
   });
 }
 
@@ -157,7 +173,7 @@ app.whenReady().then(async () => {
   createTray();
   registerUpdater();
 
-  spawnServer();
+  await spawnServer();
   const ready = await waitForServer();
   if (!ready) {
     void dialog.showErrorBox('Server failed to start', `Unable to reach ${APP_ORIGIN}. Make sure port ${PORT} is available.`);
@@ -165,6 +181,9 @@ app.whenReady().then(async () => {
 
   createWindow();
   autoUpdater.checkForUpdates();
+}).catch(error => {
+  dialog.showErrorBox('Server failed to start', String(error.message || error));
+  app.quit();
 });
 
 app.on('window-all-closed', () => {
