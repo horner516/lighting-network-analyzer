@@ -1,4 +1,17 @@
-## v0.1.1 — Remove simulated devices and readings
+## v0.1.2 — Live network signals and channel values
+
+- Receives and decodes real sACN and Art-Net traffic on the local Windows/Mac server.
+- Moves protocol information out of Overview into the **Network** tab.
+- Adds **Display current value**: choose a protocol, universe, and channel (1–512) to see DMX values and percentages, refreshed every 0.5 seconds.
+- Shows each source separately and clears current values when a stream times out or ends. Zero remains a valid reading.
+- Displays active universes, current packets/s, and peak packets/s tracked since server startup.
+- Reports multicast subscription limits, missing channels, and unavailable receivers.
+
+sACN multicast defaults to universes 1–64; configure `LNA_SACN_UNIVERSES` for other ranges. Art-Net universes use native 0-based numbering. Live reception requires the local LAN app; the hosted website cannot directly receive your network's UDP traffic.
+
+See [CHANGELOG.md](https://github.com/horner516/lighting-network-analyzer/blob/v0.1.2/CHANGELOG.md) for release history.
+
+### Retained from v0.1.1
 
 - Starts with an empty device list. No sample consoles or nodes are included.
 - Removes simulated packet rates, graphs, health percentages, interface/subnet, discovery timestamps, and uptime.

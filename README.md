@@ -8,14 +8,14 @@ The installers include the app and its LAN server. **No Node.js or developer too
 
 | Platform | Download | Compatibility |
 | --- | --- | --- |
-| Windows | [Download Windows installer](https://github.com/horner516/lighting-network-analyzer/releases/download/v0.1.1/Lighting-Network-Analyzer-0.1.1-windows-x64.exe) | Windows 10 or later, 64-bit |
-| macOS | [Download Mac installer](https://github.com/horner516/lighting-network-analyzer/releases/download/v0.1.1/Lighting-Network-Analyzer-0.1.1-mac-universal.dmg) | Universal: Apple silicon and Intel |
+| Windows | [Download Windows installer](https://github.com/horner516/lighting-network-analyzer/releases/download/v0.1.2/Lighting-Network-Analyzer-0.1.2-windows-x64.exe) | Windows 10 or later, 64-bit |
+| macOS | [Download Mac installer](https://github.com/horner516/lighting-network-analyzer/releases/download/v0.1.2/Lighting-Network-Analyzer-0.1.2-mac-universal.dmg) | Universal: Apple silicon and Intel |
 
 See [all releases and checksums](https://github.com/horner516/lighting-network-analyzer/releases). GitHub's automatic **Source code** downloads are not installable apps.
 
 **Initial release:** installers are unsigned and the Mac app is not notarized. Your operating system may show an unknown-publisher warning. On Mac, open the disk image, drag the app to Applications, then approve it in System Settings → Privacy & Security if required by your system. Follow your organization's software policy.
 
-**No simulated devices:** device inventory remains manual and unverified. The current source includes real receive-only sACN and Art-Net listeners and a live signal panel. Signal reception does not prove node health. The v0.1.1 installers linked above predate this feature; rebuild from source until a newer installer is released.
+**Version 0.1.2:** includes real receive-only sACN and Art-Net listeners and live channel values. Device inventory remains manual and unverified, with no simulated devices. Signal reception does not prove node health. See the [changelog](CHANGELOG.md).
 
 ## Live sACN / Art-Net signals
 
@@ -23,7 +23,7 @@ The Windows/Mac host and `start:lan` server listen on UDP 5568 (sACN) and 6454 (
 
 In Network, choose sACN or Art-Net, enter a universe and a channel (1–512), then click **Display current value**. The viewer refreshes every 0.5 seconds and shows the latest received DMX value (0–255) and percentage, separately for each source. Zero is a valid reading; missing channels, timed-out streams, and ended sources show no current value. Changing the fields takes effect when you press the button. sACN multicast universes must be in the host's configured subscription range; Art-Net uses native 0-based universe numbers. Stop viewing pauses channel polling.
 
-No demo streams or lighting output are generated. Multiple browsers share the same receiver. The hosted website cannot receive lighting-network UDP directly: use the dashboard served by the updated local LAN app. Existing installers must be rebuilt to include the new channel endpoint.
+No demo streams or lighting output are generated. Multiple browsers share the same receiver. The hosted website cannot receive lighting-network UDP directly: use the dashboard served by the local LAN app, version 0.1.2 or later.
 
 Peak packets/s is the highest five-second-average rate observed per protocol since this server started. It is tracked on packet receipt, even without a browser open, survives browser refreshes and signal loss, and resets when the server restarts.
 
