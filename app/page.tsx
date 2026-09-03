@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Activity, AlertTriangle, ChevronRight, CircleDot, Clock3, Command, Gauge, Network, Radio, RefreshCw, Search, Server, Settings2, ShieldCheck, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -80,7 +81,31 @@ export default function Home() {
         <aside className="space-y-5">
           <div className="rounded-lg border border-white/10 bg-[#171d22]"><div className="border-b border-white/10 p-4"><div className="flex items-start justify-between"><div><p className="text-[11px] font-semibold uppercase tracking-[.14em] text-slate-500">Selected device</p><h2 className="mt-1 text-lg font-semibold">{selected.name}</h2></div><Button size="icon-sm" variant="ghost"><Settings2 size={16}/></Button></div></div><div className="space-y-4 p-4"><div className="grid grid-cols-2 gap-3 text-sm"><Info label="Model" value={selected.model}/><Info label="Vendor" value={selected.vendor}/><Info label="IPv4" value={selected.ip} mono/><Info label="Last seen" value={selected.last}/></div><div className="rounded-md border border-white/10 bg-black/15 p-3"><div className="mb-2 flex items-center justify-between text-xs"><span className="text-slate-400">Observed traffic</span><span className="font-mono text-teal-300">{selected.traffic}%</span></div><Progress value={selected.traffic} className="h-2"/></div><div className={`flex gap-3 rounded-md border p-3 text-sm ${selected.state==='Healthy'?'border-emerald-400/20 bg-emerald-400/[.06]':'border-amber-400/20 bg-amber-400/[.06]'}`}><Gauge size={17} className={selected.state==='Healthy'?'text-emerald-300':'text-amber-300'}/><div><div className="font-medium">{selected.state}</div><div className="mt-0.5 text-xs text-slate-400">{selected.detail}</div></div></div><Button className="w-full bg-teal-300 text-slate-950 hover:bg-teal-200">Open device details <ChevronRight size={15}/></Button></div></div>
           <div className="rounded-lg border border-white/10 bg-[#171d22] p-4"><div className="mb-4 flex items-center justify-between"><div><h2 className="font-semibold">Live signals</h2><p className="text-xs text-slate-500">Source activity · last 30 sec</p></div><Network size={17} className="text-teal-300"/></div><div className="relative h-28 overflow-hidden rounded-md border border-white/[.06] bg-black/20 p-3"><div className="scan-line absolute inset-y-0 w-px bg-teal-300/60 shadow-[0_0_12px_#5eead4]"/><svg className="h-full w-full" viewBox="0 0 300 90" preserveAspectRatio="none" aria-label="Live packet activity"><path d="M0 64 L18 63 L25 31 L34 68 L51 62 L68 61 L76 18 L85 67 L102 63 L128 62 L137 38 L146 65 L168 63 L188 61 L196 24 L206 68 L220 62 L247 61 L256 43 L266 64 L300 62" fill="none" stroke="#5eead4" strokeWidth="2"/><path d="M0 74 L45 73 L54 58 L63 76 L122 73 L131 48 L139 77 L207 73 L216 56 L225 75 L300 73" fill="none" stroke="#60a5fa" strokeWidth="1.5" opacity=".8"/></svg></div><div className="mt-3 flex gap-4 text-xs text-slate-500"><span><i className="mr-1.5 inline-block size-2 rounded-full bg-teal-300"/>sACN</span><span><i className="mr-1.5 inline-block size-2 rounded-full bg-sky-400"/>Art-Net</span></div></div>
-          <div className="rounded-lg border border-amber-400/20 bg-amber-400/[.055] p-4"><div className="flex gap-3"><AlertTriangle size={18} className="mt-0.5 shrink-0 text-amber-300"/><div><div className="font-semibold text-amber-100">2 items need attention</div><p className="mt-1 text-xs leading-5 text-slate-400">NETRON EN12 output port 7 is inactive. LED Wall Node has not responded for 4 minutes.</p><button className="mt-3 text-xs font-semibold text-amber-300 hover:text-amber-200">Review alerts →</button></div></div></div>
+          <div className="rounded-lg border border-amber-400/20 bg-amber-400/[.055] p-4"><div className="flex gap-3"><AlertTriangle size={18} className="mt-0.5 shrink-0 text-amber-300"/><div><div className="font-semibold text-amber-100">2 items need attention</div><p className="mt-1 text-xs leading-5 text-slate-400">NETRON EN12 output port 7 is inactive. LED Wall Node has not responded for 4 minutes.</p>
+            <Dialog>
+              <DialogTrigger className="mt-3 text-xs font-semibold text-amber-300 hover:text-amber-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300">Review alerts →</DialogTrigger>
+              <DialogContent className="max-h-[85vh] overflow-y-auto border border-white/10 bg-[#171d22] p-0 text-slate-100 sm:max-w-lg">
+                <DialogHeader className="border-b border-white/10 p-5 pr-12">
+                  <div className="flex items-center gap-2 text-amber-300"><AlertTriangle size={17}/><span className="text-xs font-semibold uppercase tracking-[.14em]">Active alerts</span></div>
+                  <DialogTitle className="text-xl font-semibold">2 devices need attention</DialogTitle>
+                  <DialogDescription className="text-slate-400">Review the issue, then open the affected device in the main panel.</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-3 p-5">
+                  {[devices[2], devices[5]].map((device) => (
+                    <div key={device.ip} className={`rounded-md border p-4 ${device.state === 'Offline' ? 'border-rose-400/20 bg-rose-400/[.06]' : 'border-amber-400/20 bg-amber-400/[.06]'}`}>
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex min-w-0 gap-3"><span className={`mt-1.5 size-2 shrink-0 rounded-full ${statusStyle[device.state]}`}/><div className="min-w-0"><div className="font-semibold text-slate-100">{device.name}</div><div className="mt-0.5 text-xs text-slate-500">{device.model} · {device.ip}</div></div></div>
+                        <span className={`rounded-sm border px-2 py-1 text-[11px] font-semibold ${device.state === 'Offline' ? 'border-rose-400/20 text-rose-300' : 'border-amber-400/20 text-amber-300'}`}>{device.state}</span>
+                      </div>
+                      <p className="mt-3 text-sm text-slate-300">{device.detail}</p>
+                      <DialogClose render={<Button size="sm" variant="outline" className="mt-4 border-white/10 bg-white/5" onClick={() => setSelected(device)} />}>View device <ChevronRight size={14}/></DialogClose>
+                    </div>
+                  ))}
+                </div>
+                <DialogFooter className="border-white/10 bg-black/15"><DialogClose render={<Button variant="outline" className="border-white/10 bg-white/5" />}>Close</DialogClose></DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div></div></div>
           <div className="flex items-center justify-between px-1 text-[11px] text-slate-600"><span className="flex items-center gap-1.5"><Clock3 size={12}/> Uptime 06:18:42</span><span className="flex items-center gap-1.5"><Command size={12}/> Collector v0.9</span></div>
         </aside>
       </div>
