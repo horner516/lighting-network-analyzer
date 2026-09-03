@@ -19,7 +19,11 @@ See [all releases and checksums](https://github.com/horner516/lighting-network-a
 
 ## Live sACN / Art-Net signals
 
-The Windows/Mac host and `start:lan` server listen on UDP 5568 (sACN) and 6454 (Art-Net). Overview shows protocol presence, active universes, current packets/s, and peak packets/s. The Network signals tab contains source name/IP, native universe number, received packet rate, slot count, priority, and last seen. Select a stream to inspect channels 1–16. No demo streams or lighting output are generated. Multiple browsers share the same receiver.
+The Windows/Mac host and `start:lan` server listen on UDP 5568 (sACN) and 6454 (Art-Net). The **Network** tab contains protocol presence, active universes, current and peak packets/s, source name/IP, native universe number, slot count, priority, and last seen. Overview is reserved for devices.
+
+In Network, choose sACN or Art-Net, enter a universe and a channel (1–512), then click **Display current value**. The viewer refreshes every 0.5 seconds and shows the latest received DMX value (0–255) and percentage, separately for each source. Zero is a valid reading; missing channels, timed-out streams, and ended sources show no current value. Changing the fields takes effect when you press the button. sACN multicast universes must be in the host's configured subscription range; Art-Net uses native 0-based universe numbers. Stop viewing pauses channel polling.
+
+No demo streams or lighting output are generated. Multiple browsers share the same receiver. The hosted website cannot receive lighting-network UDP directly: use the dashboard served by the updated local LAN app. Existing installers must be rebuilt to include the new channel endpoint.
 
 Peak packets/s is the highest five-second-average rate observed per protocol since this server started. It is tracked on packet receipt, even without a browser open, survives browser refreshes and signal loss, and resets when the server restarts.
 

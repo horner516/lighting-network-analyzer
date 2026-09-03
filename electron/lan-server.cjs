@@ -35,6 +35,20 @@ async function startLanServer({ root, preferredPort = 47652, host = '0.0.0.0', l
       res.end(req.method === 'HEAD' ? undefined : JSON.stringify(listener ? listener.snapshot() : { available: false }));
       return;
     }
+    if (pathname === '/api/signals/channel') {
+      res.setHeader('Content-Type', 'application/json');
+      const query = new URL(req.url, 'http://localhost').searchParams;
+      try {
+        const universe = query.get('universe'), channel = query.get('channel');
+        if (!/^\d+$/.test(universe || '') || !/^\d+$/.test(channel || '')) throw new RangeError('Universe and channel must be whole numbers.');
+        const result = listener ? listener.channelValue(query.get('protocol'), Number(universe), Number(channel)) : { available: false };
+        res.end(req.method === 'HEAD' ? undefined : JSON.stringify(result));
+      } catch (error) {
+        res.writeHead(error instanceof RangeError ? 400 : 500);
+        res.end(req.method === 'HEAD' ? undefined : JSON.stringify({ error: error instanceof RangeError ? error.message : 'Channel data unavailable.' }));
+      }
+      return;
+    }
     const file = path.resolve(base, '.' + (pathname === '/' ? '/index.html' : pathname));
     if (!file.startsWith(base + path.sep) || pathname.includes('\\') || pathname.includes('\0')) { res.writeHead(403); res.end(); return; }
     fs.stat(file, (error, stat) => {

@@ -3,14 +3,14 @@ const assert = require('node:assert/strict');
 const dgram = require('node:dgram');
 const { createSignalListener, decodeSacn, decodeArtNet, parseUniverses } = require('../electron/signal-listener.cjs');
 
-function sacn({ universe = 51, cid = 1, options = 0, startCode = 0 } = {}) {
-  const b = Buffer.alloc(130);
+function sacn({ universe = 51, cid = 1, options = 0, startCode = 0, slots = 4 } = {}) {
+  const b = Buffer.alloc(126 + slots);
   b.writeUInt16BE(16, 0); b.write('ASC-E1.17\0\0\0', 4);
   b.writeUInt16BE(0x7000 | (b.length - 16), 16); b.writeUInt32BE(4, 18); b[22] = cid;
   b.writeUInt16BE(0x7000 | (b.length - 38), 38); b.writeUInt32BE(2, 40); b.write('Loopback test only', 44);
   b[108] = 100; b[111] = 7; b[112] = options; b.writeUInt16BE(universe, 113);
   b.writeUInt16BE(0x7000 | (b.length - 115), 115); b[117] = 2; b[118] = 0xa1;
-  b.writeUInt16BE(1, 121); b.writeUInt16BE(5, 123); b[125] = startCode; b[126] = 255;
+  b.writeUInt16BE(1, 121); b.writeUInt16BE(slots + 1, 123); b[125] = startCode; b[126] = 255;
   return b;
 }
 function artnet(universe = 0) {
@@ -77,6 +77,30 @@ test('real UDP reception on loopback; occupied Art-Net port produces an error', 
 test('invalid configuration is visible, not a startup crash', async () => {
   const listener = createSignalListener({ ...opts, universeSpec: '0' }); await listener.ready;
   assert.equal(listener.snapshot().protocols.sACN.status, 'error'); listener.close();
+});
+test('channel readings preserve source identity, zero, channel 512, missing slots and stale state', async () => {
+  let time = 10000;
+  const listener = createSignalListener({ ...opts, now: () => time }); await listener.ready;
+  try {
+    const remote = { address: '127.0.0.1' };
+    const full = sacn({ slots: 512 }); full[637] = 201;
+    listener.ingest('sACN', full, remote);
+    listener.ingest('sACN', sacn({ cid: 2 }), remote);
+    assert.deepEqual(listener.channelValue('sACN', 51, 512).streams.map(s => s.value), [201, null]);
+    assert.deepEqual(listener.channelValue('sACN', 51, 2).streams.map(s => s.value), [0, 0]);
+    assert.equal(new Set(listener.channelValue('sACN', 51, 1).streams.map(s => s.id)).size, 2);
+    listener.ingest('Art-Net', artnet(), remote);
+    assert.equal(listener.channelValue('Art-Net', 0, 1).streams[0].value, 127);
+    assert.equal(listener.channelValue('sACN', 65, 1).subscribed, false);
+    assert.deepEqual(listener.channelValue('sACN', 65, 1).streams, []);
+    for (const args of [['bad', 1, 1], ['sACN', 0, 1], ['sACN', 64000, 1], ['Art-Net', 32768, 1], ['sACN', 1, 0], ['sACN', 1, 513], ['sACN', 1, 1.5]]) assert.throws(() => listener.channelValue(...args), RangeError);
+    time += 3001;
+    assert.ok(listener.channelValue('sACN', 51, 512).streams.every(s => s.value === null && s.status === 'timed-out'));
+    listener.ingest('sACN', full, remote);
+    assert.equal(listener.channelValue('sACN', 51, 512).streams[0].value, 201);
+    listener.ingest('sACN', sacn({ options: 0x40 }), remote);
+    assert.equal(listener.channelValue('sACN', 51, 512).streams[0].value, null);
+  } finally { listener.close(); }
 });
 test('peak rates are server-owned, per protocol, retained after idle and reset on restart', async () => {
   let time = 10000;

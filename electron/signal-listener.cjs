@@ -125,7 +125,16 @@ function createSignalListener({ universeSpec = process.env.LNA_SACN_UNIVERSES ||
     }
     return { available: true, sampledAt: t, presentTimeoutMs: PRESENT_MS, universeSpec, interfaces, memberships, protocols, signals: signals.sort((a, b) => a.protocol.localeCompare(b.protocol) || a.universe - b.universe || a.ip.localeCompare(b.ip)), droppedSources };
   }
+  function channelValue(protocol, universe, channel) {
+    if (!['sACN', 'Art-Net'].includes(protocol) || !Number.isInteger(universe) || universe < (protocol === 'sACN' ? 1 : 0) || universe > (protocol === 'sACN' ? 63999 : 32767) || !Number.isInteger(channel) || channel < 1 || channel > 512) throw new RangeError('Choose a valid protocol, universe and channel (1–512).');
+    const data = snapshot();
+    const streams = data.signals.filter(s => s.protocol === protocol && s.universe === universe).map(s => {
+      const value = rows.get(s.id).levels[channel - 1];
+      return { id: s.id, ip: s.ip, cid: s.cid, sourceName: s.sourceName, priority: s.priority, lastSeen: s.lastSeen, status: s.status, slots: s.slots, value: s.status === 'present' && value !== undefined ? value : null };
+    });
+    return { available: true, sampledAt: data.sampledAt, protocol, universe, channel, listenerStatus: protocols[protocol].status, subscribed: protocol === 'Art-Net' || universes.includes(universe), streams };
+  }
   function close() { if (closed) return; closed = true; for (const s of sockets) { try { s.close(); } catch {} } for (const p of Object.values(protocols)) p.status = 'stopped'; }
-  return { ready, snapshot, close, ingest };
+  return { ready, snapshot, channelValue, close, ingest };
 }
 module.exports = { createSignalListener, decodeSacn, decodeArtNet, parseUniverses };

@@ -108,10 +108,9 @@ export default function Home() {
       <Tabs defaultValue="overview">
       <TabsList aria-label="Dashboard views" className="mb-4 bg-[#1b252c] text-slate-100">
         <TabsTrigger value="overview" className="px-4 text-slate-300 data-active:bg-teal-300/15 data-active:text-teal-200">Overview</TabsTrigger>
-        <TabsTrigger value="signals" className="px-4 text-slate-300 data-active:bg-teal-300/15 data-active:text-teal-200">Network signals</TabsTrigger>
+        <TabsTrigger value="signals" className="px-4 text-slate-300 data-active:bg-teal-300/15 data-active:text-teal-200">Network</TabsTrigger>
       </TabsList>
       <TabsContent value="overview">
-      <div className="mb-5"><SignalMonitor compact /></div>
       {storageError && <p role="alert" className="mb-4 text-sm text-amber-200">{storageError}</p>}
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
         <section className="min-w-0 space-y-5">
