@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { Activity, AlertTriangle, ChevronRight, Plus, RefreshCw, Search } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Activity, Plus, RefreshCw, Search } from 'lucide-react';
+import { DeviceCards } from '@/components/device-cards';
 import { SignalMonitor } from '@/components/signal-monitor';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -14,7 +15,6 @@ import { version } from '../package.json';
 export default function Home() {
   const [query, setQuery] = useState('');
   const [deviceList, setDeviceList] = useState<ManualDevice[]>([]);
-  const [selected, setSelected] = useState<ManualDevice | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [newIp, setNewIp] = useState('');
   const [newName, setNewName] = useState('');
@@ -25,7 +25,6 @@ export default function Home() {
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [updateMessage, setUpdateMessage] = useState('');
   const [showReleaseLink, setShowReleaseLink] = useState(false);
-  const visible = useMemo(() => deviceList.filter(device => `${device.name} ${device.ip}`.toLowerCase().includes(query.toLowerCase())), [deviceList, query]);
 
   useEffect(() => {
     try { setDeviceList(restoreManualDevices(localStorage.getItem(savedDevicesKey) ?? '[]')); }
@@ -73,7 +72,7 @@ export default function Home() {
     setDeviceList(next);
     try { localStorage.setItem(savedDevicesKey, JSON.stringify(next)); setStorageError(''); }
     catch { setStorageError('This device is shown for this session only; browser storage is unavailable.'); }
-    setSelected(device); setQuery(''); setNewIp(''); setNewName(''); setAddError(''); setAddOpen(false);
+    setQuery(''); setNewIp(''); setNewName(''); setAddError(''); setAddOpen(false);
   }
 
   async function checkForUpdates() {
@@ -112,7 +111,7 @@ export default function Home() {
       </TabsList>
       <TabsContent value="overview">
       {storageError && <p role="alert" className="mb-4 text-sm text-amber-200">{storageError}</p>}
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="space-y-5">
         <section className="min-w-0 space-y-5">
           <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
             <div><h1 className="text-2xl font-semibold tracking-tight md:text-3xl">Lighting network</h1><p className="mt-1 text-sm text-slate-500">Device inventory</p></div>
@@ -120,34 +119,19 @@ export default function Home() {
               <Dialog open={addOpen} onOpenChange={open => { setAddOpen(open); if (!open) setAddError(''); }}>
                 <DialogTrigger render={<Button className="shrink-0 bg-teal-300 text-slate-950 hover:bg-teal-200" />}><Plus size={15}/> Add by IP</DialogTrigger>
                 <DialogContent className="border border-white/10 bg-[#171d22] text-slate-100 sm:max-w-md"><form onSubmit={addDevice}>
-                  <DialogHeader><DialogTitle>Add device by IP</DialogTitle><DialogDescription className="text-slate-400">Save a device entry in this browser. Its address and health will not be checked.</DialogDescription></DialogHeader>
+                  <DialogHeader><DialogTitle>Add device by IP</DialogTitle><DialogDescription className="text-slate-400">Save the IP in this browser and request available identity and port information from the local LAN server.</DialogDescription></DialogHeader>
                   <div className="space-y-4 py-5"><div className="space-y-2"><label htmlFor="device-name">Device name (optional)</label><Input id="device-name" value={newName} onChange={event => setNewName(event.target.value)} className="border-white/10 bg-black/15"/></div><div className="space-y-2"><label htmlFor="device-ip">IPv4 address</label><Input id="device-ip" value={newIp} onChange={event => { setNewIp(event.target.value); setAddError(''); }} inputMode="decimal" autoFocus className="border-white/10 bg-black/15 font-mono" aria-invalid={Boolean(addError)} aria-describedby={addError ? 'device-ip-error' : undefined}/>{addError && <p id="device-ip-error" role="alert" className="text-sm text-rose-300">{addError}</p>}</div></div>
                   <DialogFooter className="border-white/10 bg-transparent"><DialogClose render={<Button type="button" variant="outline" />}>Cancel</DialogClose><Button type="submit" className="bg-teal-300 text-slate-950 hover:bg-teal-200">Add device</Button></DialogFooter>
                 </form></DialogContent>
               </Dialog>
             </div>
           </div>
-          <div className="overflow-hidden rounded-lg border border-white/10 bg-[#171d22]">
-            <div className="border-b border-white/10 p-4"><h2 className="font-semibold">Devices <span className="text-slate-500">{deviceList.length}</span></h2><p className="text-sm text-slate-500">Manually added entries · stored in this browser</p></div>
-            <div className="overflow-x-auto"><table className="w-full min-w-[520px] text-left text-sm"><thead className="border-b border-white/10 text-slate-500"><tr><th className="px-4 py-3 font-medium">Device</th><th className="px-4 py-3 font-medium">IP address</th><th className="px-4 py-3 font-medium">Health</th></tr></thead><tbody>
-              {visible.map(device => <tr key={device.ip} className={`border-b border-white/[.06] ${selected?.ip === device.ip ? 'bg-teal-300/[.045]' : ''}`}><td className="px-4 py-4"><button onClick={() => setSelected(device)} className="text-left font-medium text-teal-200 hover:underline">{device.name}</button><div className="text-xs text-slate-500">Manually added</div></td><td className="px-4 py-4 font-mono text-slate-400">{device.ip}</td><td className="px-4 py-4 text-slate-400">Unverified</td></tr>)}
-              {!visible.length && <tr><td colSpan={3} className="px-5 py-12 text-center"><p className="font-medium text-slate-200">{deviceList.length ? 'No matching devices' : 'No devices added'}</p><p className="mt-2 text-sm text-slate-500">{deviceList.length ? 'Try another name or IP address.' : 'Use Add by IP to save your devices. Automatic discovery is not connected.'}</p></td></tr>}
-            </tbody></table></div>
-          </div>
+          <DeviceCards devices={deviceList} query={query} />
         </section>
-
-        <aside className="space-y-5">
-          <div className="rounded-lg border border-white/10 bg-[#171d22] p-4"><h2 className="font-semibold">Selected device</h2>{selected ? <div className="mt-4 space-y-4"><h3 className="text-lg text-teal-200">{selected.name}</h3><DeviceFacts device={selected}/><Dialog><DialogTrigger render={<Button className="w-full bg-teal-300 text-slate-950 hover:bg-teal-200" />}>Open device details <ChevronRight size={15}/></DialogTrigger><DialogContent className="border border-white/10 bg-[#171d22] text-slate-100"><DialogHeader><DialogTitle>{selected.name}</DialogTitle><DialogDescription className="text-slate-400">Manually added · unverified</DialogDescription></DialogHeader><DeviceFacts device={selected}/><DialogFooter className="border-white/10 bg-transparent"><DialogClose render={<Button variant="outline" />}>Close</DialogClose></DialogFooter></DialogContent></Dialog></div> : <p className="mt-3 text-sm text-slate-500">{deviceList.length ? 'Select a device to view its details.' : 'Add a device to view its details.'}</p>}</div>
-          <div className="rounded-lg border border-white/10 bg-[#171d22] p-4"><div className="flex items-center gap-2"><AlertTriangle size={18} className="text-slate-400"/><h2 className="font-semibold">Health alerts unavailable</h2></div><p className="mt-3 text-sm text-slate-500">No health reports have been received. This does not mean the devices are healthy.</p><Dialog><DialogTrigger className="mt-3 text-sm font-semibold text-teal-300 hover:underline">Review alerts →</DialogTrigger><DialogContent className="border border-white/10 bg-[#171d22] text-slate-100"><DialogHeader><DialogTitle>Health alerts unavailable</DialogTitle><DialogDescription className="text-slate-400">A network collector must supply real device measurements before this app can report health alerts.</DialogDescription></DialogHeader><DialogFooter className="border-white/10 bg-transparent"><DialogClose render={<Button variant="outline" />}>Close</DialogClose></DialogFooter></DialogContent></Dialog></div>
-        </aside>
       </div>
       </TabsContent>
       <TabsContent value="signals"><SignalMonitor /></TabsContent>
       </Tabs>
     </div>
   </main>;
-}
-
-function DeviceFacts({device}:{device:ManualDevice}) {
-  return <div className="space-y-3 text-sm"><dl className="grid grid-cols-2 gap-3">{[['IP address',device.ip],['Health','Unverified'],['Model','Unknown'],['Protocol','Unknown'],['Last seen','Never observed'],['Traffic','Not measured']].map(([label,value]) => <div key={label}><dt className="text-slate-500">{label}</dt><dd className="mt-1 break-words text-slate-200">{value}</dd></div>)}</dl><p className="rounded-md border border-white/10 bg-black/15 p-3 text-slate-400">Saved manually. No connection, reachability, or health check has been performed.</p></div>;
 }

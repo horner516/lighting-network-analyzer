@@ -35,6 +35,13 @@ async function startLanServer({ root, preferredPort = 47652, host = '0.0.0.0', l
       res.end(req.method === 'HEAD' ? undefined : JSON.stringify(listener ? listener.snapshot() : { available: false }));
       return;
     }
+    if (pathname === '/api/devices/poll') {
+      res.setHeader('Content-Type', 'application/json');
+      if (req.headers['sec-fetch-site'] === 'cross-site' || (req.headers.origin && req.headers.origin !== `http://${req.headers.host}`)) { res.writeHead(403); res.end('{}'); return; }
+      if (!listener || req.method === 'HEAD') { res.writeHead(503); res.end(); return; }
+      listener.pollNode(new URL(req.url, 'http://localhost').searchParams.get('ip') || '').then(result => res.end(JSON.stringify(result))).catch(error => { res.writeHead(error instanceof RangeError ? 400 : 503); res.end(JSON.stringify({ error: error.message })); });
+      return;
+    }
     if (pathname === '/api/signals/channel') {
       res.setHeader('Content-Type', 'application/json');
       const query = new URL(req.url, 'http://localhost').searchParams;

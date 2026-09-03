@@ -1,6 +1,7 @@
 const dgram = require('node:dgram');
 const { networkInterfaces } = require('node:os');
 const { isIPv4 } = require('node:net');
+const { createNodePoller } = require('./node-poller.cjs');
 const ACN_ID = Buffer.from('ASC-E1.17\0\0\0');
 const PRESENT_MS = 3000, KEEP_MS = 300000;
 
@@ -31,9 +32,15 @@ function decodeArtNet(b) {
   if (count < 2 || count > 512 || count % 2 || b.length !== 18 + count || universe > 32767) return null;
   return { protocol: 'Art-Net', universe, cid: '', sourceName: '', priority: null, sequence: b[12], slots: count, levels: [...b.subarray(18)] };
 }
-// Receive only: never send discovery, DMX levels or configuration commands.
+// Receives DMX. Explicit node polling sends only discovery/status enquiries,
+// never DMX output or commands that change a node's configuration.
 function createSignalListener({ universeSpec = process.env.LNA_SACN_UNIVERSES || '1-64', interfaceIp = process.env.LNA_INTERFACE || '', ports = { sacn: 5568, artnet: 6454 }, bindAddress = '0.0.0.0', joinMulticast = true, now = Date.now } = {}) {
   const rows = new Map(), sockets = [], memberships = [];
+  let artnetSocket;
+  const nodePoller = createNodePoller({ now, send: (packet, ip) => new Promise((resolve, reject) => {
+    if (!artnetSocket || protocols['Art-Net'].status !== 'listening') { reject(new Error('Art-Net receiver unavailable. Check UDP port 6454.')); return; }
+    artnetSocket.send(packet, 6454, ip, error => error ? reject(error) : resolve());
+  }) });
   const protocols = { 'sACN': { port: ports.sacn, status: 'starting', error: '', received: 0, ignored: 0, peakRate: 0 }, 'Art-Net': { port: ports.artnet, status: 'starting', error: '', received: 0, ignored: 0, peakRate: 0 } };
   const protocolBuckets = { 'sACN': [], 'Art-Net': [] };
   const interfaces = Object.entries(networkInterfaces()).flatMap(([name, list]) => (list || []).filter(n => n.family === 'IPv4' && !n.internal).map(n => ({ name, address: n.address })));
@@ -43,6 +50,7 @@ function createSignalListener({ universeSpec = process.env.LNA_SACN_UNIVERSES ||
     if (interfaceIp && (!isIPv4(interfaceIp) || !interfaces.some(n => n.address === interfaceIp))) throw new Error('LNA_INTERFACE must be an IPv4 address on an active local adapter.');
   } catch (error) { configError = error.message; }
   function ingest(protocol, b, remote) {
+    if (protocol === 'Art-Net' && nodePoller.receive(b, remote)) return;
     const p = protocols[protocol], frame = protocol === 'sACN' ? decodeSacn(b) : decodeArtNet(b);
     if (!frame || (protocol === 'sACN' && (frame.preview || frame.startCode !== 0))) { p.ignored++; return; }
     const t = now(), key = `${protocol}:${remote.address}:${frame.cid}:${frame.universe}`;
@@ -89,6 +97,7 @@ function createSignalListener({ universeSpec = process.env.LNA_SACN_UNIVERSES ||
     }
     const primary = await bind();
     if (!primary) return;
+    if (protocol === 'Art-Net') artnetSocket = primary;
     p.status = 'listening';
     if (protocol === 'sACN' && joinMulticast) {
       const candidates = interfaceIp ? interfaces.filter(n => n.address === interfaceIp) : interfaces;
@@ -134,7 +143,7 @@ function createSignalListener({ universeSpec = process.env.LNA_SACN_UNIVERSES ||
     });
     return { available: true, sampledAt: data.sampledAt, protocol, universe, channel, listenerStatus: protocols[protocol].status, subscribed: protocol === 'Art-Net' || universes.includes(universe), streams };
   }
-  function close() { if (closed) return; closed = true; for (const s of sockets) { try { s.close(); } catch {} } for (const p of Object.values(protocols)) p.status = 'stopped'; }
-  return { ready, snapshot, channelValue, close, ingest };
+  function close() { if (closed) return; closed = true; nodePoller.close(); for (const s of sockets) { try { s.close(); } catch {} } for (const p of Object.values(protocols)) p.status = 'stopped'; }
+  return { ready, snapshot, channelValue, pollNode: nodePoller.poll, close, ingest };
 }
 module.exports = { createSignalListener, decodeSacn, decodeArtNet, parseUniverses };

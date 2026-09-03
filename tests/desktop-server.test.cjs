@@ -32,6 +32,8 @@ test('packaged server skips occupied ports and serves dashboard, assets and actu
     assert.equal((await fetch(channelUrl, { method: 'HEAD' })).status, 200);
     assert.equal((await fetch(lan.url + '/api/signals/channel?protocol=sACN&universe=0&channel=1')).status, 400);
     assert.equal((await fetch(lan.url + '/api/signals/channel?protocol=Art-Net&channel=1')).status, 400);
+    assert.equal((await fetch(lan.url + '/api/devices/poll?ip=127.0.0.1')).status, 400);
+    assert.equal((await fetch(lan.url + '/api/devices/poll?ip=10.0.26.105', { headers: { Origin: 'https://other.example' } })).status, 403);
     assert.equal((await fetch(lan.url + '/package.json')).status, 404);
     assert.equal((await fetch(lan.url + '/..%2fpackage.json')).status, 403);
     assert.equal((await fetch(lan.url + '/', { method: 'POST' })).status, 405);

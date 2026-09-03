@@ -1,4 +1,16 @@
-## v0.1.2 — Live network signals and channel values
+## v0.1.3 — Device polling and physical port cards
+
+- Adding an IP now requests real device information from the local LAN server; **Poll Nodes** refreshes saved devices.
+- Displays reported name, MAC address, firmware identifier, node status and available port/subnet information.
+- Replaces inventory rows with compact ProPlex-style port cards and read-only detail dialogs.
+- Maps IQ Two physical ports A–P separately from secondary merge inputs and master controls.
+- Uses ArtPoll and an IP enquiry with programming disabled; does not change device settings or send lighting output.
+
+**IQ Two limitation:** the tested node's Art-Net reply does not expose current sACN assignments, RDM state or subnet mask. These remain unknown rather than displaying guessed settings. Use the device web page for fields the node does not publish. Live polling requires the local LAN app, not the hosted site.
+
+See [CHANGELOG.md](https://github.com/horner516/lighting-network-analyzer/blob/v0.1.3/CHANGELOG.md) for release history.
+
+### Included from v0.1.2
 
 - Receives and decodes real sACN and Art-Net traffic on the local Windows/Mac server.
 - Moves protocol information out of Overview into the **Network** tab.
@@ -9,8 +21,6 @@
 
 sACN multicast defaults to universes 1–64; configure `LNA_SACN_UNIVERSES` for other ranges. Art-Net universes use native 0-based numbering. Live reception requires the local LAN app; the hosted website cannot directly receive your network's UDP traffic.
 
-See [CHANGELOG.md](https://github.com/horner516/lighting-network-analyzer/blob/v0.1.2/CHANGELOG.md) for release history.
-
 ### Retained from v0.1.1
 
 - Starts with an empty device list. No sample consoles or nodes are included.
@@ -19,7 +29,7 @@ See [CHANGELOG.md](https://github.com/horner516/lighting-network-analyzer/blob/v
 - Empty device and details panels clearly explain how to add an IP address.
 - The dashboard header displays its version and includes **Check for updates**. It compares the latest public GitHub release and opens GitHub downloads when a newer version is available, with a visible fallback link if popups are blocked.
 
-**Automatic discovery and device health monitoring are not connected yet.** Adding by IP saves an entry in that browser; it does not probe the device or synchronize entries between browsers.
+**Subnet scanning and continuous device-health monitoring are not included.** Added IPs are polled for Art-Net status. Saved device lists are local to each browser.
 
 Download the Windows x64 `.exe`, or the universal Mac `.dmg` for Intel and Apple silicon. The installers include the app and LAN server. Port 47652 is preferred; another port is chosen if it is occupied. The header displays the actual server addresses.
 
