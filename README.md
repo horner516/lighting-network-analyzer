@@ -15,7 +15,21 @@ See [all releases and checksums](https://github.com/horner516/lighting-network-a
 
 **Initial release:** installers are unsigned and the Mac app is not notarized. Your operating system may show an unknown-publisher warning. On Mac, open the disk image, drag the app to Applications, then approve it in System Settings → Privacy & Security if required by your system. Follow your organization's software policy.
 
-**No simulated devices:** the app starts empty and shows only entries you add manually. Automatic discovery and health monitoring are not connected yet. Manual entries are unverified; adding an IP does not check a device or synchronize entries between browsers. Unknown measurements are left blank rather than simulated.
+**No simulated devices:** device inventory remains manual and unverified. The current source includes real receive-only sACN and Art-Net listeners and a live signal panel. Signal reception does not prove node health. The v0.1.1 installers linked above predate this feature; rebuild from source until a newer installer is released.
+
+## Live sACN / Art-Net signals
+
+The Windows/Mac host and `start:lan` server listen on UDP 5568 (sACN) and 6454 (Art-Net). Overview shows protocol presence, active universes, current packets/s, and peak packets/s. The Network signals tab contains source name/IP, native universe number, received packet rate, slot count, priority, and last seen. Select a stream to inspect channels 1–16. No demo streams or lighting output are generated. Multiple browsers share the same receiver.
+
+Peak packets/s is the highest five-second-average rate observed per protocol since this server started. It is tracked on packet receipt, even without a browser open, survives browser refreshes and signal loss, and resets when the server restarts.
+
+- sACN multicast defaults to universes **1–64** on local IPv4 adapters. Select up to 256 universes with `LNA_SACN_UNIVERSES`, e.g. `1-64,101-110`. Set `LNA_INTERFACE` to a local adapter IPv4 address to restrict multicast subscriptions. Restart after changing adapters/settings. Membership failures are displayed.
+- Art-Net listens for broadcast and unicast ArtDmx reaching the host; its universe addresses are displayed **0-based**. sACN universes are 1-based. Unicast sACN addressed to the server is also accepted, regardless of multicast subscriptions.
+- Presence expires after 3 seconds without a valid non-preview DMX packet. History expires after 5 minutes. Source-terminated sACN streams are marked ended immediately. Preview, alternate start codes (including priority-only packets), synchronization and discovery packets are excluded from DMX presence. This is a traffic monitor, not a console merge/output engine.
+- Incoming packets are validated. Rates are five-second averages of accepted packets, not Ethernet bandwidth, output frame rate, or proof that a node received the data. Repeated sequenced packets arriving within 100 ms are deduplicated. History is limited to 1,024 source/universe entries; overflow is reported.
+- Permit inbound UDP 5568/6454 and the dashboard TCP port on trusted networks. An occupied Art-Net port produces a visible listener error; it is not silently moved to another port. sACN sockets share the multicast port, with OS-dependent coexistence with other receivers.
+- The hosted site cannot receive your LAN's UDP traffic. Open the **local server address** on your computer, tablet, or phone. Other VLANs, IGMP filtering, or unicast sent to other devices may hide traffic; a mirrored port/TAP may require a separate packet-capture implementation (not included).
+- The API and dashboard have no login. Keep them on a trusted network; do not forward their ports to the internet. Signal observations remain in server memory and are never uploaded to the hosted site or GitHub.
 
 ## What this repo contains
 
@@ -104,4 +118,4 @@ The page now shows the active access URL at the top of the dashboard header and 
 ## Important notes
 
 - No sample devices, traffic graphs, health percentages, discovery timestamps, or uptime readings are included.
-- A real network collector must be integrated before automatic discovery or health monitoring is available.
+- Automatic device discovery and device hardware-health monitoring remain separate, unimplemented capabilities. The included listeners report observed lighting streams only.

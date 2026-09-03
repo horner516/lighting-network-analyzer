@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Activity, AlertTriangle, ChevronRight, Network, Plus, Radio, RefreshCw, Search, Server, ShieldCheck, Zap } from 'lucide-react';
+import { Activity, AlertTriangle, ChevronRight, Plus, RefreshCw, Search } from 'lucide-react';
+import { SignalMonitor } from '@/components/signal-monitor';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -34,7 +36,7 @@ export default function Home() {
     setServerUrl(window.location.origin);
     const controller = new AbortController();
     const refresh = () => fetch('/api/server-info', { signal: controller.signal, cache: 'no-store' })
-      .then(response => response.ok ? response.json() : null)
+      .then(response => response.ok ? response.json() as Promise<{ urls?: unknown }> : null)
       .then(info => {
         if (Array.isArray(info?.urls)) setLanUrls(info.urls.filter((url: unknown) => typeof url === 'string' && /^http:\/\/[\da-fA-F.:\[\]]+:\d+$/.test(url)));
       }).catch(() => {});
@@ -49,7 +51,7 @@ export default function Home() {
     const lifecycle = new AbortController();
     void Promise.resolve(context.registerTool({
       name: 'filter_devices', title: 'Filter lighting devices',
-      description: 'Search manually added device entries. These entries have unverified health; no collector is connected.',
+      description: 'Search manually added device entries. These entries have unverified health.',
       inputSchema: { type: 'object', properties: { search: { type: 'string' } }, required: ['search'], additionalProperties: false },
       annotations: { readOnlyHint: false, untrustedContentHint: false },
       execute(input: unknown) {
@@ -91,12 +93,6 @@ export default function Home() {
     } finally { clearTimeout(timeout); setCheckingUpdate(false); }
   }
 
-  const cards = [
-    { label: 'Saved devices', value: String(deviceList.length), icon: Server, note: 'Manually added · unverified' },
-    { label: 'Active universes', value: '—', icon: Radio, note: 'No measurements available' },
-    { label: 'Packet rate', value: '—', icon: Zap, note: 'No collector connected' },
-    { label: 'Network health', value: 'Unknown', icon: ShieldCheck, note: 'Devices have not been checked' },
-  ];
 
   return <main className="min-h-screen bg-[#101519] text-slate-100">
     <header className="sticky top-0 z-20 border-b border-white/10 bg-[#101519]/95 backdrop-blur">
@@ -109,7 +105,13 @@ export default function Home() {
     </header>
 
     <div className="mx-auto max-w-[1600px] p-4 lg:p-7">
-      <div role="status" className="mb-5 rounded-lg border border-amber-300/20 bg-amber-300/[.05] p-4 text-sm text-amber-100">No network collector is connected. Automatic discovery and device health checks are not available yet. Manually added entries do not confirm that a device is online.</div>
+      <Tabs defaultValue="overview">
+      <TabsList aria-label="Dashboard views" className="mb-4 bg-[#1b252c] text-slate-100">
+        <TabsTrigger value="overview" className="px-4 text-slate-300 data-active:bg-teal-300/15 data-active:text-teal-200">Overview</TabsTrigger>
+        <TabsTrigger value="signals" className="px-4 text-slate-300 data-active:bg-teal-300/15 data-active:text-teal-200">Network signals</TabsTrigger>
+      </TabsList>
+      <TabsContent value="overview">
+      <div className="mb-5"><SignalMonitor compact /></div>
       {storageError && <p role="alert" className="mb-4 text-sm text-amber-200">{storageError}</p>}
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
         <section className="min-w-0 space-y-5">
@@ -126,7 +128,6 @@ export default function Home() {
               </Dialog>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">{cards.map(({label,value,icon:Icon,note}) => <div key={label} className="rounded-lg border border-white/10 bg-[#181e23] p-4"><div className="mb-4 flex items-center justify-between gap-2 text-slate-400"><span className="text-sm">{label}</span><Icon size={17}/></div><div className="font-mono text-2xl font-semibold text-slate-200">{value}</div><div className="mt-1 text-sm text-slate-500">{note}</div></div>)}</div>
           <div className="overflow-hidden rounded-lg border border-white/10 bg-[#171d22]">
             <div className="border-b border-white/10 p-4"><h2 className="font-semibold">Devices <span className="text-slate-500">{deviceList.length}</span></h2><p className="text-sm text-slate-500">Manually added entries · stored in this browser</p></div>
             <div className="overflow-x-auto"><table className="w-full min-w-[520px] text-left text-sm"><thead className="border-b border-white/10 text-slate-500"><tr><th className="px-4 py-3 font-medium">Device</th><th className="px-4 py-3 font-medium">IP address</th><th className="px-4 py-3 font-medium">Health</th></tr></thead><tbody>
@@ -138,10 +139,12 @@ export default function Home() {
 
         <aside className="space-y-5">
           <div className="rounded-lg border border-white/10 bg-[#171d22] p-4"><h2 className="font-semibold">Selected device</h2>{selected ? <div className="mt-4 space-y-4"><h3 className="text-lg text-teal-200">{selected.name}</h3><DeviceFacts device={selected}/><Dialog><DialogTrigger render={<Button className="w-full bg-teal-300 text-slate-950 hover:bg-teal-200" />}>Open device details <ChevronRight size={15}/></DialogTrigger><DialogContent className="border border-white/10 bg-[#171d22] text-slate-100"><DialogHeader><DialogTitle>{selected.name}</DialogTitle><DialogDescription className="text-slate-400">Manually added · unverified</DialogDescription></DialogHeader><DeviceFacts device={selected}/><DialogFooter className="border-white/10 bg-transparent"><DialogClose render={<Button variant="outline" />}>Close</DialogClose></DialogFooter></DialogContent></Dialog></div> : <p className="mt-3 text-sm text-slate-500">{deviceList.length ? 'Select a device to view its details.' : 'Add a device to view its details.'}</p>}</div>
-          <div className="rounded-lg border border-white/10 bg-[#171d22] p-4"><div className="flex items-center justify-between"><h2 className="font-semibold">Signals</h2><Network size={17} className="text-slate-500"/></div><p className="mt-4 text-sm text-slate-400">No signal measurements available.</p><p className="mt-2 text-sm text-slate-500">sACN and Art-Net traffic is not being collected.</p></div>
           <div className="rounded-lg border border-white/10 bg-[#171d22] p-4"><div className="flex items-center gap-2"><AlertTriangle size={18} className="text-slate-400"/><h2 className="font-semibold">Health alerts unavailable</h2></div><p className="mt-3 text-sm text-slate-500">No health reports have been received. This does not mean the devices are healthy.</p><Dialog><DialogTrigger className="mt-3 text-sm font-semibold text-teal-300 hover:underline">Review alerts →</DialogTrigger><DialogContent className="border border-white/10 bg-[#171d22] text-slate-100"><DialogHeader><DialogTitle>Health alerts unavailable</DialogTitle><DialogDescription className="text-slate-400">A network collector must supply real device measurements before this app can report health alerts.</DialogDescription></DialogHeader><DialogFooter className="border-white/10 bg-transparent"><DialogClose render={<Button variant="outline" />}>Close</DialogClose></DialogFooter></DialogContent></Dialog></div>
         </aside>
       </div>
+      </TabsContent>
+      <TabsContent value="signals"><SignalMonitor /></TabsContent>
+      </Tabs>
     </div>
   </main>;
 }

@@ -2,6 +2,7 @@ const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
 const { networkInterfaces } = require('node:os');
+const { createSignalListener } = require('./signal-listener.cjs');
 
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.woff2': 'font/woff2' };
 
@@ -12,10 +13,11 @@ function addresses(port, host) {
   return { port, urls: ips.map(ip => `http://${ip.includes(':') ? `[${ip}]` : ip}:${port}`) };
 }
 
-async function startLanServer({ root, preferredPort = 47652, host = '0.0.0.0' }) {
+async function startLanServer({ root, preferredPort = 47652, host = '0.0.0.0', listenerOptions = {} }) {
   if (!Number.isInteger(preferredPort) || preferredPort < 1024 || preferredPort > 65535) throw new Error('Server port must be an integer from 1024 to 65535.');
   const base = path.resolve(root);
   if (!fs.existsSync(path.join(base, 'index.html'))) throw new Error('The bundled dashboard is missing. Reinstall the app.');
+  let listener;
   const server = http.createServer((req, res) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Cache-Control', 'no-store');
@@ -26,6 +28,11 @@ async function startLanServer({ root, preferredPort = 47652, host = '0.0.0.0' })
     if (pathname === '/api/server-info') {
       res.setHeader('Content-Type', 'application/json');
       res.end(req.method === 'HEAD' ? undefined : JSON.stringify(addresses(server.address().port, host)));
+      return;
+    }
+    if (pathname === '/api/signals') {
+      res.setHeader('Content-Type', 'application/json');
+      res.end(req.method === 'HEAD' ? undefined : JSON.stringify(listener ? listener.snapshot() : { available: false }));
       return;
     }
     const file = path.resolve(base, '.' + (pathname === '/' ? '/index.html' : pathname));
@@ -52,6 +59,9 @@ async function startLanServer({ root, preferredPort = 47652, host = '0.0.0.0' })
         server.listen({ port, host, exclusive: true });
       });
       const localHost = host === '0.0.0.0' ? '127.0.0.1' : host === '::' ? '[::1]' : host.includes(':') ? `[${host}]` : host;
+      listener = createSignalListener(listenerOptions);
+      await listener.ready;
+      server.on('close', () => listener.close());
       return { server, port, url: `http://${localHost}:${port}`, info: () => addresses(port, host) };
     } catch (error) {
       if (error.code !== 'EADDRINUSE') throw error;

@@ -10,13 +10,13 @@
   },
   "scripts": {
     "dev": "vinext dev",
-    "start:lan": "node scripts/start-lan.mjs",
+    "start:lan": "pnpm run desktop:web && node scripts/start-lan.mjs",
     "build": "vinext build",
     "start": "wrangler dev --config dist/server/wrangler.json",
     "desktop": "pnpm run desktop:web && node scripts/run-desktop.mjs",
     "desktop:web": "vite build --config desktop/vite.config.ts",
     "desktop:build": "pnpm run desktop:web && electron-builder --config electron-builder.json",
-    "desktop:test": "node --test tests/desktop-server.test.cjs tests/manual-devices.test.mjs tests/updates.test.mjs",
+    "desktop:test": "node --test tests/desktop-server.test.cjs tests/manual-devices.test.mjs tests/updates.test.mjs tests/signals.test.cjs",
     "lint": "oxlint",
     "format": "oxfmt"
   },
