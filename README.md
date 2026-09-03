@@ -8,14 +8,14 @@ The installers include the app and its LAN server. **No Node.js or developer too
 
 | Platform | Download | Compatibility |
 | --- | --- | --- |
-| Windows | [Download Windows installer](https://github.com/horner516/lighting-network-analyzer/releases/download/v0.1.0/Lighting-Network-Analyzer-0.1.0-windows-x64.exe) | Windows 10 or later, 64-bit |
-| macOS | [Download Mac installer](https://github.com/horner516/lighting-network-analyzer/releases/download/v0.1.0/Lighting-Network-Analyzer-0.1.0-mac-universal.dmg) | Universal: Apple silicon and Intel |
+| Windows | [Download Windows installer](https://github.com/horner516/lighting-network-analyzer/releases/download/v0.1.1/Lighting-Network-Analyzer-0.1.1-windows-x64.exe) | Windows 10 or later, 64-bit |
+| macOS | [Download Mac installer](https://github.com/horner516/lighting-network-analyzer/releases/download/v0.1.1/Lighting-Network-Analyzer-0.1.1-mac-universal.dmg) | Universal: Apple silicon and Intel |
 
 See [all releases and checksums](https://github.com/horner516/lighting-network-analyzer/releases). GitHub's automatic **Source code** downloads are not installable apps.
 
 **Initial release:** installers are unsigned and the Mac app is not notarized. Your operating system may show an unknown-publisher warning. On Mac, open the disk image, drag the app to Applications, then approve it in System Settings → Privacy & Security if required by your system. Follow your organization's software policy.
 
-**Demo data:** automatic lighting-device discovery is not connected yet. Listed devices and health values are samples. Adding by IP stores a browser-local entry; it does not check the device or synchronize entries between browsers.
+**No simulated devices:** the app starts empty and shows only entries you add manually. Automatic discovery and health monitoring are not connected yet. Manual entries are unverified; adding an IP does not check a device or synchronize entries between browsers. Unknown measurements are left blank rather than simulated.
 
 ## What this repo contains
 
@@ -89,9 +89,11 @@ Artifacts appear in `desktop-dist/`.
 
 Build on Windows for the Windows installer and on Mac for `.dmg` and `.zip` packages. Windows installer, uninstaller, shortcuts, and the Mac app use matching icons derived from `public/app-icon.svg`.
 
-Pushing a version tag such as `v0.1.0` triggers native Windows and Mac builds. GitHub publishes the release only after both builds and packaged startup checks succeed. Update `package.json`, these versioned links, and `RELEASE_NOTES.md` before tagging a new version.
+Pushing a version tag such as `v0.1.1` triggers native Windows and Mac builds. GitHub publishes the release only after both builds and packaged startup checks succeed. Update `package.json`, these versioned links, and `RELEASE_NOTES.md` before tagging a new version.
 
 ## Updates
+
+The dashboard header shows its version and a **Check for updates** button. This checks the repository's latest public stable GitHub release. If it is newer, the app opens the GitHub download page in a browser window. A visible link is also provided if popup blocking prevents opening the window. No GitHub sign-in or token is required; internet access is needed. Offline and rate-limit errors are displayed explicitly.
 
 Use **Check for Updates** in the tray/menu-bar menu. Windows can download and install a newer release after confirmation. This unsigned Mac release checks for newer versions and opens GitHub for manual installation; seamless Mac updates require signed releases. Offline checks report an error without interrupting the LAN server.
 
@@ -101,5 +103,5 @@ The page now shows the active access URL at the top of the dashboard header and 
 
 ## Important notes
 
-- The current build is a demo dataset for layout/testing unless you connect a real discovery backend.
-- If you want the page to display real discovery data, wire the device list to your discovery API/socket feed instead of the static `devices` sample array.
+- No sample devices, traffic graphs, health percentages, discovery timestamps, or uptime readings are included.
+- A real network collector must be integrated before automatic discovery or health monitoring is available.

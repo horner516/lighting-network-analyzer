@@ -1,26 +1,17 @@
-First standalone desktop release of Lighting Network Analyzer (LUX//LINK).
+## v0.1.1 — Remove simulated devices and readings
 
-## Downloads
+- Starts with an empty device list. No sample consoles or nodes are included.
+- Removes simulated packet rates, graphs, health percentages, interface/subnet, discovery timestamps, and uptime.
+- Preserves saved manual entries but labels them **Unverified**, with no invented model, health, or traffic measurements.
+- Empty device and details panels clearly explain how to add an IP address.
+- The dashboard header displays its version and includes **Check for updates**. It compares the latest public GitHub release and opens GitHub downloads when a newer version is available, with a visible fallback link if popups are blocked.
 
-- **Windows:** choose the `windows-x64.exe` installer (Windows 10 or later, 64-bit).
-- **Mac:** choose the `mac-universal.dmg` installer (Intel and Apple silicon). Open the disk image and drag the app into Applications.
-- The Mac `.zip` is an alternative download; `.yml` and `.blockmap` files support update checks.
+**Automatic discovery and device health monitoring are not connected yet.** Adding by IP saves an entry in that browser; it does not probe the device or synchronize entries between browsers.
 
-## Included
+Download the Windows x64 `.exe`, or the universal Mac `.dmg` for Intel and Apple silicon. The installers include the app and LAN server. Port 47652 is preferred; another port is chosen if it is occupied. The header displays the actual server addresses.
 
-- Bundled dashboard and LAN server; no Node.js installation required.
-- Preferred port 47652, with automatic fallback when busy.
-- Clickable server IP addresses and active port in the dashboard header.
-- Matching app, installer, and tray/menu-bar icons.
-- Close the window to keep the server running; choose Quit from the tray/menu-bar icon to stop it.
-- Check for Updates from the tray/menu-bar icon. Windows can download and install updates; this unsigned Mac release opens GitHub for manual installation.
+These initial installers are unsigned and the Mac app is not Apple-notarized. Your operating system may display an unknown-publisher warning. Follow your organization's software policy.
 
-## Before using
+Windows users can choose **Check for Updates** from the tray icon to download and install this release. Mac users can use the same menu to check, then download and install the new Mac app from GitHub.
 
-**This version displays sample devices. Automatic sACN, Art-Net, and MA device discovery and real health monitoring are not implemented.** Adding a device by IP saves an entry in that browser; it does not probe the device. Each browser has its own saved entries.
-
-These initial installers are not publisher-signed or Apple-notarized. Windows may display a SmartScreen warning. macOS may require opening System Settings → Privacy & Security and approving the app after an initial launch attempt. Follow your organization's software policy; signed releases require signing certificates.
-
-Other devices on the same LAN can use the server address shown in the header. Allow incoming connections on your trusted/private network if the OS firewall prompts. This release has no login; do not expose it to the public internet.
-
-SHA256SUMS.txt contains checksums for the installer downloads. Builds and packaged startup checks run on Windows and macOS before publication.
+The release includes checksums in SHA256SUMS.txt. Both platforms pass bundled-server tests and packaged startup checks before publication.
