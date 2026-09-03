@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Lighting Network Analyzer',
+  title: 'Lux Link',
   description: 'Monitor sACN, Art-Net, grandMA, ETC, ProPlex and NETRON devices from one live operations view.',
 };
 
