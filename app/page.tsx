@@ -21,6 +21,7 @@ const devices: Device[] = [
 ];
 
 const statusStyle: Record<State,string> = { Healthy:'bg-emerald-400', Warning:'bg-amber-400', Offline:'bg-rose-500' };
+const savedDevicesKey = 'lux-link-manual-devices';
 
 export default function Home() {
   const [query, setQuery] = useState('');
@@ -39,7 +40,11 @@ export default function Home() {
     if (!isValidIpv4(ip)) { setAddError('Enter a valid IPv4 address, such as 10.101.2.50.'); return; }
     if (deviceList.some(device => device.ip === ip)) { setAddError('That IP address is already in the device list.'); return; }
     const device: Device = { name: newName.trim() || `Device ${ip}`, model:'Manually added device', vendor:'Unknown', ip, protocol:'Awaiting discovery', universes:'—', state:'Warning', detail:'Manual entry · awaiting response', traffic:0, last:'Not seen' };
-    setDeviceList(current => [...current, device]);
+    setDeviceList(current => {
+      const next = [...current, device];
+      try { localStorage.setItem(savedDevicesKey, JSON.stringify(next.filter(item => item.model === 'Manually added device'))); } catch {}
+      return next;
+    });
     setSelected(device);
     setFilter('All');
     setQuery('');
@@ -48,6 +53,13 @@ export default function Home() {
     setAddError('');
     setAddOpen(false);
   }
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(savedDevicesKey) ?? '[]') as Device[];
+      if (Array.isArray(saved)) setDeviceList(current => [...current, ...saved.filter(item => item?.ip && !current.some(device => device.ip === item.ip))]);
+    } catch {}
+  }, []);
 
   useEffect(() => {
     const context = (document as Document & { modelContext?: { registerTool: (tool: unknown, options?: {signal?: AbortSignal}) => void | Promise<void> } }).modelContext;
