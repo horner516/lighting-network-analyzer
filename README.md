@@ -4,26 +4,30 @@ Standalone desktop and web dashboard for monitoring lighting network devices (sA
 
 ## Downloads
 
-**Installers are not published yet.** The links below open GitHub Releases, where Windows and Mac downloads will appear after the first desktop release is built and uploaded.
+The installers include the app and its LAN server. **No Node.js or developer tools are required.**
 
-| Platform | Download location | File to choose under Assets |
+| Platform | Download | Compatibility |
 | --- | --- | --- |
-| Windows | [Windows downloads](https://github.com/horner516/lighting-network-analyzer/releases) | Windows `.exe` installer |
-| macOS | [Mac downloads](https://github.com/horner516/lighting-network-analyzer/releases) | `.dmg` for your Mac (Apple silicon: `arm64`; Intel: `x64`) |
+| Windows | [Download Windows installer](https://github.com/horner516/lighting-network-analyzer/releases/download/v0.1.0/Lighting-Network-Analyzer-0.1.0-windows-x64.exe) | Windows 10 or later, 64-bit |
+| macOS | [Download Mac installer](https://github.com/horner516/lighting-network-analyzer/releases/download/v0.1.0/Lighting-Network-Analyzer-0.1.0-mac-universal.dmg) | Universal: Apple silicon and Intel |
 
-GitHub's automatic **Source code** downloads are not installable apps. Until installers are published, use the local build instructions below.
+See [all releases and checksums](https://github.com/horner516/lighting-network-analyzer/releases). GitHub's automatic **Source code** downloads are not installable apps.
+
+**Initial release:** installers are unsigned and the Mac app is not notarized. Your operating system may show an unknown-publisher warning. On Mac, open the disk image, drag the app to Applications, then approve it in System Settings → Privacy & Security if required by your system. Follow your organization's software policy.
+
+**Demo data:** automatic lighting-device discovery is not connected yet. Listed devices and health values are samples. Adding by IP stores a browser-local entry; it does not check the device or synchronize entries between browsers.
 
 ## What this repo contains
 
 - React dashboard (`app/`) with discovered-device panel and health views
-- LAN server helpers in `scripts/start-lan.mjs`
-- Windows desktop host in `electron/main.cjs`
-- Auto-update capable Windows packaging settings (`electron-builder.json`)
+- Bundled LAN server in `electron/lan-server.cjs`; development helper in `scripts/start-lan.mjs`
+- Windows and Mac desktop host in `electron/main.cjs`
+- Installer settings in `electron-builder.json` and automated release builds in `.github/workflows/desktop-release.yml`
 
-## Prerequisites
+## Developer prerequisites
 
-- Node.js 22+
-- pnpm
+- Node.js 24
+- pnpm 11.19.0
 
 ## Start the web app for LAN use
 
@@ -48,9 +52,11 @@ You can override:
 NETWORK_ANALYZER_PORT=50000 NETWORK_ANALYZER_HOST=0.0.0.0 pnpm run start:lan
 ```
 
-## Windows desktop app (EXE)
+## Windows and Mac desktop app
 
-The desktop mode runs the same LAN server and opens an Electron window.
+The installed app serves its bundled dashboard over the LAN and opens a desktop window. Closing the window keeps the server running; choose **Quit** from the tray/menu-bar icon to stop it. Allow the app through your firewall on trusted/private networks when prompted. No login is provided; do not expose the server to the public internet.
+
+To run from source:
 
 ```bash
 pnpm install
@@ -67,20 +73,27 @@ It provides:
   - Quit
 - Manual update checks via **Right Click** tray action in production builds
 
-## Build EXE locally
+## Build installers locally
 
 ```bash
 pnpm install
-pnpm run desktop:build
+pnpm run desktop:web
+pnpm run desktop:test
+# On Windows:
+pnpm exec electron-builder --config electron-builder.json --win --x64 --publish never
+# On Mac (both Apple silicon and Intel in one installer):
+pnpm exec electron-builder --config electron-builder.json --mac --universal --publish never
 ```
 
 Artifacts appear in `desktop-dist/`.
 
-Build on Windows for the Windows installer. On a Mac, `pnpm run desktop:build` produces macOS `.dmg` and `.zip` packages for the build machine's architecture. Windows installer, uninstaller, shortcuts, and the Mac app use matching icons derived from `public/app-icon.svg`.
+Build on Windows for the Windows installer and on Mac for `.dmg` and `.zip` packages. Windows installer, uninstaller, shortcuts, and the Mac app use matching icons derived from `public/app-icon.svg`.
+
+Pushing a version tag such as `v0.1.0` triggers native Windows and Mac builds. GitHub publishes the release only after both builds and packaged startup checks succeed. Update `package.json`, these versioned links, and `RELEASE_NOTES.md` before tagging a new version.
 
 ## Updates
 
-The desktop app checks `https://github.com/horner516/lighting-network-analyzer` for new GitHub releases (with a matching tag/version) and can install downloaded releases directly.
+Use **Check for Updates** in the tray/menu-bar menu. Windows can download and install a newer release after confirmation. This unsigned Mac release checks for newer versions and opens GitHub for manual installation; seamless Mac updates require signed releases. Offline checks report an error without interrupting the LAN server.
 
 ## Deployment
 

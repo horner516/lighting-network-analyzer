@@ -38,4 +38,5 @@ next-env.d.ts
 /outputs/
 /work/
 desktop-dist/
+desktop-web/
 out/

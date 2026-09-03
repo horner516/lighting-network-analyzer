@@ -5,39 +5,33 @@
     "output": "desktop-dist"
   },
   "files": [
-    "app/**/*",
-    "components/**/*",
-    "hooks/**/*",
-    "lib/**/*",
-    "public/**/*",
-    "scripts/**/*",
+    "desktop-web/**/*",
+    "public/app-icon.*",
     "electron/**/*",
-    "package.json",
-    "vite.config.ts",
-    "next.config.ts",
-    ".openai/hosting.json",
-    "next-env.d.ts",
-    "tsconfig.json",
-    "components.json",
-    "node_modules"
+    "package.json"
   ],
   "asar": true,
+  "npmRebuild": false,
   "extraMetadata": {
     "main": "electron/main.cjs"
   },
   "win": {
     "icon": "public/app-icon.ico",
-    "target": "nsis",
-    "artifactName": "${productName}-${version}-win-${arch}.${ext}"
+    "target": [{ "target": "nsis", "arch": ["x64"] }],
+    "artifactName": "Lighting-Network-Analyzer-${version}-windows-${arch}.${ext}"
   },
   "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
     "installerIcon": "public/app-icon.ico",
     "uninstallerIcon": "public/app-icon.ico",
     "installerHeaderIcon": "public/app-icon.ico"
   },
   "mac": {
+    "category": "public.app-category.utilities",
     "icon": "public/app-icon.icns",
-    "target": ["dmg", "zip"]
+    "target": ["dmg", "zip"],
+    "artifactName": "Lighting-Network-Analyzer-${version}-mac-${arch}.${ext}"
   },
   "publish": [
     {
