@@ -7,12 +7,16 @@
   },
   "scripts": {
     "dev": "vinext dev",
+    "start:lan": "node scripts/start-lan.mjs",
     "build": "vinext build",
     "start": "wrangler dev --config dist/server/wrangler.json",
+    "desktop": "node scripts/run-desktop.mjs",
+    "desktop:build": "pnpm run build && electron-builder --config electron-builder.json",
     "lint": "oxlint",
     "format": "oxfmt"
   },
   "dependencies": {
+    "electron-updater": "^6.6.2",
     "react": "19.2.6",
     "react-dom": "19.2.6",
     "react-server-dom-webpack": "19.2.6",
@@ -46,10 +50,44 @@
     "oxfmt": "0.61.0",
     "oxlint": "1.76.0",
     "oxlint-tsgolint": "7.0.2001",
+    "electron": "^33.3.0",
     "tailwindcss": "4.2.1",
     "typescript": "5.9.3",
     "vite": "8.0.13",
+    "electron-builder": "^25.1.8",
     "wrangler": "4.92.0"
   },
-  "type": "module"
+  "type": "module",
+  "build": {
+    "appId": "com.luxlink.lighting-network-analyzer",
+    "productName": "Lighting Network Analyzer",
+    "directories": {
+      "output": "desktop-dist"
+    },
+    "files": [
+      "app/**/*",
+      "components/**/*",
+      "hooks/**/*",
+      "lib/**/*",
+      "public/**/*",
+      "scripts/**/*",
+      "electron/**/*",
+      "package.json",
+      "next-env.d.ts",
+      "tsconfig.json",
+      "components.json"
+    ],
+    "asar": true,
+    "win": {
+      "target": "nsis",
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "horner516",
+        "repo": "lighting-network-analyzer"
+      }
+    ]
+  }
 }

@@ -51,6 +51,7 @@ export default function Home() {
   const [newIp, setNewIp] = useState('');
   const [newName, setNewName] = useState('');
   const [addError, setAddError] = useState('');
+  const [serverUrl, setServerUrl] = useState('...');
   const visible = useMemo(() => deviceList.filter(d => (filter === 'All' || d.state === filter) && `${d.name} ${d.model} ${d.ip} ${d.protocol}`.toLowerCase().includes(query.toLowerCase())), [deviceList, query, filter]);
   const onlineCount = useMemo(() => deviceList.filter(d => d.state !== 'Offline').length, [deviceList]);
   const offlineCount = useMemo(() => deviceList.filter(d => d.state === 'Offline').length, [deviceList]);
@@ -91,6 +92,13 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const { host, protocol } = window.location;
+      setServerUrl(`${protocol}//${host}`);
+    }
+  }, []);
+
+  useEffect(() => {
     const context = (document as Document & { modelContext?: { registerTool: (tool: unknown, options?: {signal?: AbortSignal}) => void | Promise<void> } }).modelContext;
     if (!context?.registerTool) return;
     const lifecycle = new AbortController();
@@ -117,6 +125,10 @@ export default function Home() {
         <div className="mx-auto flex h-16 max-w-[1600px] items-center justify-between px-4 lg:px-7">
           <div className="flex items-center gap-3"><div className="grid size-9 place-items-center rounded-md border border-teal-300/30 bg-teal-300/10 text-teal-300"><Activity size={19}/></div><div><div className="text-[15px] font-bold tracking-wide">LUX<span className="text-teal-300">//</span>LINK</div><div className="text-[11px] tracking-[.18em] text-slate-500">NETWORK ANALYZER</div></div></div>
           <div className="hidden items-center gap-5 text-sm text-slate-400 sm:flex"><span className="flex items-center gap-2"><span className="size-2 rounded-full bg-emerald-400 shadow-[0_0_10px_#34d399]"/>Listening on en0</span><span>10.101.0.0/16</span><Button size="sm" variant="outline" className="border-white/10 bg-white/5"><RefreshCw size={14}/> Rescan</Button></div>
+        </div>
+        <div className="mx-auto flex max-w-[1600px] gap-3 border-b border-white/10 px-4 pb-3 pt-2 text-xs text-slate-400 lg:px-7">
+          <span className="text-slate-500">Server:</span>
+          <a href={serverUrl} target="_blank" rel="noreferrer" className="font-mono text-teal-300 underline decoration-white/30 hover:decoration-white/70">{serverUrl}</a>
         </div>
       </header>
 

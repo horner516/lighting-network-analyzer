@@ -1,0 +1,36 @@
+{
+  "appId": "com.luxlink.lighting-network-analyzer",
+  "productName": "Lighting Network Analyzer",
+  "directories": {
+    "output": "desktop-dist"
+  },
+  "files": [
+    "app/**/*",
+    "components/**/*",
+    "hooks/**/*",
+    "lib/**/*",
+    "public/**/*",
+    "scripts/**/*",
+    "electron/**/*",
+    "package.json",
+    "next-env.d.ts",
+    "tsconfig.json",
+    "components.json",
+    "node_modules"
+  ],
+  "asar": true,
+  "extraMetadata": {
+    "main": "electron/main.cjs"
+  },
+  "win": {
+    "target": "nsis",
+    "artifactName": "${productName}-${version}-win-${arch}.${ext}"
+  },
+  "publish": [
+    {
+      "provider": "github",
+      "owner": "horner516",
+      "repo": "lighting-network-analyzer"
+    }
+  ]
+}
