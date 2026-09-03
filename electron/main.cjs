@@ -11,7 +11,7 @@ const APP_ORIGIN = SERVER_URL;
 const SERVER_START_DELAY_MS = 1000;
 const UPDATER_POLL_MS = 30 * 60 * 1000;
 
-const iconPath = join(__dirname, '..', 'public', 'favicon.svg');
+const iconPath = join(__dirname, '..', 'public', process.platform === 'win32' ? 'app-icon.ico' : 'app-icon.png');
 let mainWindow = null;
 let tray = null;
 let serverProcess = null;

@@ -2,6 +2,17 @@
 
 Standalone desktop and web dashboard for monitoring lighting network devices (sACN, Art-Net, grandMA, ETC, TMB ProPlex, Obsidian/NETRON).
 
+## Downloads
+
+**Installers are not published yet.** The links below open GitHub Releases, where Windows and Mac downloads will appear after the first desktop release is built and uploaded.
+
+| Platform | Download location | File to choose under Assets |
+| --- | --- | --- |
+| Windows | [Windows downloads](https://github.com/horner516/lighting-network-analyzer/releases) | Windows `.exe` installer |
+| macOS | [Mac downloads](https://github.com/horner516/lighting-network-analyzer/releases) | `.dmg` for your Mac (Apple silicon: `arm64`; Intel: `x64`) |
+
+GitHub's automatic **Source code** downloads are not installable apps. Until installers are published, use the local build instructions below.
+
 ## What this repo contains
 
 - React dashboard (`app/`) with discovered-device panel and health views
@@ -45,7 +56,7 @@ pnpm run desktop
 
 It provides:
 
-- Tray icon (uses the web app favicon icon)
+- Tray icon matching the dashboard's teal pulse logo
 - Tray menu:
   - Open Dashboard
   - Open in Browser
@@ -61,6 +72,8 @@ pnpm run desktop:build
 ```
 
 Artifacts appear in `desktop-dist/`.
+
+Build on Windows for the Windows installer. On a Mac, `pnpm run desktop:build` produces macOS `.dmg` and `.zip` packages for the build machine's architecture. Windows installer, uninstaller, shortcuts, and the Mac app use matching icons derived from `public/app-icon.svg`.
 
 ## Updates
 

@@ -23,8 +23,18 @@
     "main": "electron/main.cjs"
   },
   "win": {
+    "icon": "public/app-icon.ico",
     "target": "nsis",
     "artifactName": "${productName}-${version}-win-${arch}.${ext}"
+  },
+  "nsis": {
+    "installerIcon": "public/app-icon.ico",
+    "uninstallerIcon": "public/app-icon.ico",
+    "installerHeaderIcon": "public/app-icon.ico"
+  },
+  "mac": {
+    "icon": "public/app-icon.icns",
+    "target": ["dmg", "zip"]
   },
   "publish": [
     {
