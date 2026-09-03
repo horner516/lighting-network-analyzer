@@ -33,11 +33,13 @@ test('missing port fields and unsupported protocol remain unknown', () => {
   assert.equal(d.ports[0].rdm,null); assert.equal(d.ports[0].outputProtocol,null);
   assert.equal(d.ports[0].outputAddress,null); assert.match(d.error,/Protocol/);
 });
-test('poller prefers ProPlex web status and degrades to explicit Art-Net fallback', async () => {
+test('poller uses ProPlex web status and reports unavailable without Art-Net fallback', async () => {
   const expected=normalizeProplex('10.0.26.106',fixture());
   const p=createDevicePoller({read:async()=>{throw Error('Not NETRON');},proplexPoll:async()=>expected,artnetPoll:async()=>{throw Error('Should not poll Art-Net');}});
   assert.equal(await p.poll('10.0.26.106'),expected);
-  const fallback=createDevicePoller({read:async()=>({}),proplexPoll:async()=>{throw Error('Timeout');},artnetPoll:async()=>({proplex:true,ports:[],source:'Art-Net'})});
-  assert.match((await fallback.poll('10.0.26.106')).error,/web status unavailable/);
+  const fallback=createDevicePoller({read:async()=>({}),proplexPoll:async()=>{throw Error('Timeout');},artnetPoll:async()=>{throw Error('Art-Net must not be queried');}});
+  const missing = await fallback.poll('10.0.26.106');
+  assert.equal(missing.responding, false); assert.deepEqual(missing.ports, []);
+  assert.match(missing.error,/web\/API polling failed/);
   await assert.rejects(readStatus('127.0.0.1'),RangeError);
 });

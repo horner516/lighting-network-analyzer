@@ -66,13 +66,15 @@ function normalizeNetron(ip, settings, identity, network, rawPorts, warnings = [
   };
 }
 
-function createDevicePoller({ artnetPoll, read = readJson, proplexPoll = pollProplex, now = Date.now }) {
+function createDevicePoller({ read = readJson, proplexPoll = pollProplex, now = Date.now } = {}) {
   const pending = new Map(), cache = new Map();
   async function fallback(ip) {
     try { return await proplexPoll(ip); }
     catch {
-      const result = await artnetPoll(ip);
-      return result.proplex ? { ...result, error: 'ProPlex web status unavailable or unsupported. Showing available Art-Net information only.' } : result;
+      return { ip, checkedAt: now(), responding: false, source: 'Device web/API polling', name: '', description: '',
+        proplex: false, ports: [], subnetMask: null, firmwareCode: null, mac: '', report: '',
+        note: 'Device information comes only from its live web/API response, not Art-Net discovery.',
+        error: 'Device web/API polling failed or the device format is unsupported. No current configuration is available.' };
     }
   }
   async function collect(ip) {

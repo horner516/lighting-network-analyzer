@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.6 — 2026-09-03
+
+- Device cards now use live ProPlex web-monitor and NETRON API polling exclusively; removed Art-Net discovery fallback for device information.
+- Automatically refreshes saved devices while the dashboard is open, waiting 15 seconds between sequential polling cycles. Manual Poll Nodes remains available.
+- Failed web/API polling clears current configuration and shows an explicit unavailable state; no substitute discovery data or invented health.
+- Retains receive-only sACN and Art-Net traffic monitoring on Network, physical port layouts and LAN server access.
+
 ## 0.1.5 — 2026-09-03
 
 - Added read-only ProPlex IQ Two web-monitor polling, verified against a real IQ Two 1616. Reads firmware, MAC, subnet mask, physical ports, direction, universe, protocol, RDM and configured DMX rate from the status page without image recognition or changing settings.

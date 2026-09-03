@@ -19,6 +19,7 @@ export function DeviceCards({ devices, query }: { devices: ManualDevice[]; query
   useEffect(() => {
     const id = ++generation.current;
     const controller = new AbortController();
+    let nextPoll: ReturnType<typeof setTimeout> | undefined;
     const ips = ipKey ? ipKey.split(',') : [];
     async function poll() {
       setBusy(ips.length > 0);
@@ -45,15 +46,18 @@ export function DeviceCards({ devices, query }: { devices: ManualDevice[]; query
           }
         } finally { clearTimeout(timeout); controller.signal.removeEventListener('abort', abort); }
       }
-      if (id === generation.current && !controller.signal.aborted) { setBusy(false); setPollingIp(''); }
+      if (id === generation.current && !controller.signal.aborted) {
+        setBusy(false); setPollingIp('');
+        if (ips.length) nextPoll = setTimeout(() => setRefresh(n => n + 1), 15000);
+      }
     }
     void poll();
-    return () => controller.abort();
+    return () => { controller.abort(); clearTimeout(nextPoll); };
   }, [ipKey, refresh]);
 
   const visible = devices.filter(device => `${device.name} ${device.ip} ${info[device.ip]?.description || ''}`.toLowerCase().includes(query.toLowerCase()));
   return <div className="space-y-4">
-    <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="font-semibold">Devices <span className="text-slate-400">{devices.length}</span></h2><p className="text-sm text-slate-400">Saved in this browser · polls on load and when devices are added</p></div><Button onClick={() => setRefresh(n => n + 1)} disabled={busy || !devices.length} className="bg-teal-300 text-slate-950 hover:bg-teal-200"><RefreshCw size={16} className={busy ? 'animate-spin' : ''}/>{busy ? 'Polling nodes…' : 'Poll Nodes'}</Button></div>
+    <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="font-semibold">Devices <span className="text-slate-400">{devices.length}</span></h2><p className="text-sm text-slate-400">Live web/API polling · 15s between refresh cycles</p></div><Button onClick={() => setRefresh(n => n + 1)} disabled={busy || !devices.length} className="bg-teal-300 text-slate-950 hover:bg-teal-200"><RefreshCw size={16} className={busy ? 'animate-spin' : ''}/>{busy ? 'Polling nodes…' : 'Poll Nodes'}</Button></div>
     {!visible.length && <p className="rounded-lg border border-white/10 p-8 text-center text-slate-400">{devices.length ? 'No matching devices.' : 'Add a device by IP to fetch its identity and available port information.'}</p>}
     {visible.map(device => {
       const node = info[device.ip];
@@ -63,7 +67,7 @@ export function DeviceCards({ devices, query }: { devices: ManualDevice[]; query
       const portWidth = en12 ? 80 : 100;
       const name = node?.description || node?.name || device.name;
       return <section key={device.ip} aria-label={name} className="overflow-hidden rounded-xl border border-white/15 bg-[#171d22]">
-        <div className="flex flex-wrap items-start justify-between gap-4 p-4"><div><h3 className="text-xl font-semibold">{name}</h3>{device.name !== name && !device.name.startsWith('Device ') && <p className="mt-1 text-sm text-slate-400">{device.name}</p>}<div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-sm"><span><span className="text-slate-400">IP </span><a href={`http://${device.ip}/`} target="_blank" rel="noreferrer" className="font-mono text-teal-200 underline">{device.ip}</a></span><span><span className="text-slate-400">Subnet mask </span><span className="font-mono">{node?.subnetMask || 'Not reported'}</span></span></div></div><span className={`rounded-md border px-3 py-1 text-sm ${node?.responding ? 'border-teal-300/30 text-teal-200' : 'border-white/10 text-slate-400'}`}>{pollingIp === device.ip ? 'Polling…' : node?.responding ? 'Responded to poll' : node ? 'No status reply' : 'Not polled'}</span></div>
+        <div className="flex flex-wrap items-start justify-between gap-4 p-4"><div><h3 className="text-xl font-semibold">{name}</h3>{device.name !== name && !device.name.startsWith('Device ') && <p className="mt-1 text-sm text-slate-400">{device.name}</p>}<div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-sm"><span><span className="text-slate-400">IP </span><a href={`http://${device.ip}/`} target="_blank" rel="noreferrer" className="font-mono text-teal-200 underline">{device.ip}</a></span><span><span className="text-slate-400">Subnet mask </span><span className="font-mono">{node?.subnetMask || 'Not reported'}</span></span></div></div><span className={`rounded-md border px-3 py-1 text-sm ${node?.responding ? 'border-teal-300/30 text-teal-200' : 'border-white/10 text-slate-400'}`}>{pollingIp === device.ip ? 'Polling…' : node?.responding ? 'Web/API responding' : node ? 'Polling unavailable' : 'Not polled'}</span></div>
         {ports.length > 0 && <><div className="border-t border-white/10 px-4 py-2 text-sm text-slate-400">{ports.length} reported ports · select a port for details</div><div className="overflow-x-auto px-4 pb-4"><div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${columns}, minmax(${portWidth}px, 1fr))`, minWidth: columns * (portWidth + 8) }}>
           {ports.map(port => {
             const address = port.displayUniverse ?? port.outputAddress ?? port.inputAddress;
@@ -75,7 +79,7 @@ export function DeviceCards({ devices, query }: { devices: ManualDevice[]; query
         <div className="space-y-2 border-t border-white/10 px-4 py-3 text-sm text-slate-400">
           {(errors[device.ip] || node?.error) && <p role="alert" className="text-amber-200">{errors[device.ip] || node?.error}</p>}
           {node?.responding && <><p className="font-mono text-slate-200">{node.report || 'No status text reported'}</p><p>MAC {node.mac || 'Not reported'} · Firmware {node.firmware || (node.firmwareCode !== null ? `ID ${node.firmwareCode}` : 'Not reported')}{node.uptime ? ` · On time ${node.uptime}` : ''}</p><p>{node.note}</p></>}
-          {node && <p>Last poll: {new Date(node.checkedAt).toLocaleTimeString()} · Device health is not continuously monitored.</p>}
+          {node && <p>Last poll: {new Date(node.checkedAt).toLocaleTimeString()} · Configuration snapshot; hardware health is not verified.</p>}
           <a href={`http://${device.ip}/${node?.source === 'NETRON web API' ? 'index.html' : 'device.htm'}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-teal-200 underline">Open device web page <ExternalLink size={14}/></a>
         </div>
       </section>;

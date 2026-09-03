@@ -8,26 +8,30 @@ The installers include the app and its LAN server. **No Node.js or developer too
 
 | Platform | Download | Compatibility |
 | --- | --- | --- |
-| Windows | [Download Windows installer](https://github.com/horner516/lighting-network-analyzer/releases/download/v0.1.5/Lux-Link-0.1.5-windows-x64.exe) | Windows 10 or later, 64-bit |
-| macOS | [Download Mac installer](https://github.com/horner516/lighting-network-analyzer/releases/download/v0.1.5/Lux-Link-0.1.5-mac-universal.dmg) | Universal: Apple silicon and Intel |
+| Windows | [Download Windows installer](https://github.com/horner516/lighting-network-analyzer/releases/download/v0.1.6/Lux-Link-0.1.6-windows-x64.exe) | Windows 10 or later, 64-bit |
+| macOS | [Download Mac installer](https://github.com/horner516/lighting-network-analyzer/releases/download/v0.1.6/Lux-Link-0.1.6-mac-universal.dmg) | Universal: Apple silicon and Intel |
 
 See [all releases and checksums](https://github.com/horner516/lighting-network-analyzer/releases). GitHub's automatic **Source code** downloads are not installable apps.
 
 **Initial release:** installers are unsigned and the Mac app is not notarized. Your operating system may show an unknown-publisher warning. On Mac, open the disk image, drag the app to Applications, then approve it in System Settings → Privacy & Security if required by your system. Follow your organization's software policy.
 
-**Version 0.1.5:** Lux Link now reads ProPlex IQ Two web-monitor status and NETRON web API configuration, with physical port cards. It also includes sACN and Art-Net reception, live channel values, and read-only Art-Net device polling. Add by IP saves a device and requests its available identity and port information. No simulated devices are included. A status reply is not a continuous health check. See the [changelog](CHANGELOG.md).
+**Version 0.1.6:** Lux Link now reads ProPlex IQ Two web-monitor status and NETRON web API configuration, with physical port cards. It also includes sACN and Art-Net reception, live channel values, and automatic web/API device polling. Add by IP saves a device and requests its available identity and port information. No simulated devices are included. A status reply is not a continuous health check. See the [changelog](CHANGELOG.md).
 
 ## Device cards and polling
+
+Saved devices are polled through their live web/API interface on load and when added. Polling repeats while the dashboard is open, with 15 seconds between completed sequential cycles. **Poll Nodes** requests an immediate refresh. The server briefly caches duplicate requests from multiple browsers. Art-Net remains a receive-only traffic source on Network, not a source for device configuration.
+
+ProPlex 16-port cards use two rows of eight; NETRON EN12 uses one row of twelve. Six-port ProPlex cards use two rows of three and eight-port cards use one row. Click a port for read-only details.
 
 ### NETRON web API
 
 The local app detects NETRON devices through their web-monitor JSON API and reads `Setting.json`, `index.json`, `IP.json`, and `DMXPorts.json`. Verified with an EN12 running V2.9.2. It retrieves device name/model, firmware, MAC, on-time, subnet mask, direction, protocol, universe, RDM configuration, frame rate, merge mode and channel range. All requests are read-only; no cue recall, configuration changes or firmware actions are performed.
 
-Global RDM processing and per-port RDM must both be enabled for the card to show RDM on. Art-Net tile universes follow the device web monitor's numbering preference; native addresses are preserved in port details. Configured frame rate is not measured traffic. Failed optional endpoints produce partial information with an explicit warning. Devices that do not identify as NETRON retain Art-Net polling.
+Global RDM processing and per-port RDM must both be enabled for the card to show RDM on. Art-Net tile universes follow the device web monitor's numbering preference; native addresses are preserved in port details. Configured frame rate is not measured traffic. Failed optional endpoints produce partial information with an explicit warning. Non-NETRON devices are checked for a supported ProPlex web monitor; unsupported devices show polling unavailable.
 
-Added devices appear as compact port cards. **Poll Nodes** refreshes NETRON configuration through its web API. ProPlex IQ Two configuration comes from its read-only `status.htm` page. When neither web interface is supported/reachable, ArtPoll and an ArtIpProg enquiry with all programming bits cleared provide fallback information. No configuration or lighting output is sent. Polling also runs when the page loads and when an IP is added; requests run sequentially and repeated requests are briefly cached.
+Added devices appear as compact port cards. **Poll Nodes** refreshes NETRON configuration through its web API. ProPlex IQ Two configuration comes from its read-only `status.htm` page. When neither web interface is supported/reachable, the card shows polling unavailable. No configuration or lighting output is sent. Polling also runs when the page loads and when an IP is added; requests run sequentially and repeated requests are briefly cached.
 
-ProPlex IQ Two cards use physical A–P labels, excluding secondary merge inputs and master-control bindings. Layouts follow the earlier reference: 16 ports in two rows of eight, eight ports in one row, and six ports in two rows of three. NETRON EN12 cards display all twelve ports in one physical row, left to right. Other devices show the port bindings they report. A port opens a read-only detail panel.
+ProPlex IQ Two cards use physical A–P labels, excluding secondary merge inputs and master-control bindings. Layouts follow the earlier reference: 16 ports in two rows of eight, eight ports in one row, and six ports in two rows of three. NETRON EN12 cards display all twelve ports in one physical row, left to right. Unsupported devices do not display guessed ports. A port opens a read-only detail panel.
 
 ### ProPlex IQ Two web monitor
 
@@ -35,7 +39,7 @@ Verified with IQ Two 1616 master firmware 2.36. The app reads `status.htm` to ob
 
 The supported status-page format identifies physical 4-, 6-, 8- or 16-port models. Only the 16-port hardware has been live-tested. Universe display must be Decimal; other formats remain unknown with a warning. Reported values outside protocol limits are displayed with an error rather than silently changed. The tested node reports port L as sACN universe 0, which is outside the valid sACN range.
 
-If the web monitor is unreachable or its format is unsupported, polling falls back to Art-Net with a warning. IQ Two Art-Net replies may omit sACN assignments, RDM and subnet information; these remain unknown. Configuration snapshots are not continuous health monitoring or proof that DMX is reaching a fixture.
+If the web monitor is unreachable or its format is unsupported, current configuration is cleared and polling is shown as unavailable. Device cards never substitute Art-Net discovery information. Configuration snapshots are not continuous health monitoring or proof that DMX is reaching a fixture.
 
 Polling requires the updated local LAN app. The hosted website cannot send Art-Net packets onto your LAN. Supported target addresses are private LAN hosts and the lighting convention of 2.x addresses. Only explicitly added IPs are queried; this is not a subnet scanner.
 

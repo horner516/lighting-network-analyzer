@@ -19,7 +19,7 @@ async function startLanServer({ root, preferredPort = 47652, host = '0.0.0.0', l
   const base = path.resolve(root);
   if (!fs.existsSync(path.join(base, 'index.html'))) throw new Error('The bundled dashboard is missing. Reinstall the app.');
   let listener;
-  const devicePoller = createDevicePoller({ artnetPoll: ip => listener.pollNode(ip) });
+  const devicePoller = createDevicePoller();
   const server = http.createServer((req, res) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Cache-Control', 'no-store');

@@ -1,5 +1,6 @@
-## v0.1.5 — Lux Link, ProPlex and NETRON integration
+## v0.1.6 — Lux Link, ProPlex and NETRON integration
 
+- Device cards now poll live web/API data automatically, with 15 seconds between polling cycles. Art-Net discovery fallback has been removed; the Network traffic listener remains.
 - Renamed the dashboard and desktop app to **Lux Link**, with matching installer names and the existing teal icon. The app identifier and saved browser profile are preserved.
 - Added read-only NETRON web API polling, verified on an EN12 running V2.9.2.
 - Displays reported firmware, MAC, on-time, subnet mask and port configuration: direction, protocol, universe, effective RDM state, configured frame rate, merge mode and channel range.
@@ -7,7 +8,7 @@
 - Art-Net tile numbering follows the NETRON web monitor; native addresses remain available in port details.
 - Polling failures show explicit warnings. Configuration is not proof of live signal or continuous device health. No simulated devices or readings are included.
 
-**New ProPlex web-monitor support:** reads IQ Two status-page firmware, MAC, subnet mask, direction, universe, protocol, RDM and configured DMX rate. Verified on a real IQ Two 1616. No forms are submitted or settings changed. If unavailable, the app falls back to Art-Net with a warning and preserves unknown fields. Decimal universe format is supported; invalid reported values are flagged. Configuration is not proof of signal or health.
+**New ProPlex web-monitor support:** reads IQ Two status-page firmware, MAC, subnet mask, direction, universe, protocol, RDM and configured DMX rate. Verified on a real IQ Two 1616. No forms are submitted or settings changed. If unavailable, current configuration is cleared with an explicit warning. Device cards do not fall back to Art-Net discovery. Decimal universe format is supported; invalid reported values are flagged. Configuration is not proof of signal or health.
 
 **LAN access:** the server listens on all IPv4 interfaces and displays usable address links for phones, tablets and other computers. Allow the dashboard TCP port on trusted networks; no internet port forwarding is required or recommended.
 
@@ -19,4 +20,4 @@ The installers are unsigned and the Mac app is not notarized. Follow your organi
 
 Checksums are included in SHA256SUMS.txt. Both platform builds run automated tests and packaged startup checks before publication.
 
-See the [changelog](https://github.com/horner516/lighting-network-analyzer/blob/v0.1.5/CHANGELOG.md).
+See the [changelog](https://github.com/horner516/lighting-network-analyzer/blob/v0.1.6/CHANGELOG.md).
