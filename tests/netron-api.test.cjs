@@ -33,7 +33,7 @@ test('reads only known status resources, caches polls, and retains identity on p
   assert.deepEqual(calls, ['/Setting.json', '/index.json', '/IP.json', '/DMXPorts.json']);
 });
 test('non-NETRON nodes retain Art-Net fallback and invalid targets are rejected', async () => {
-  const poller = createDevicePoller({ read: async () => ({}), artnetPoll: async ip => ({ ip, source: 'Art-Net' }) });
+  const poller = createDevicePoller({ read: async () => ({}), proplexPoll: async () => { throw Error('Not ProPlex'); }, artnetPoll: async ip => ({ ip, source: 'Art-Net' }) });
   assert.equal((await poller.poll('10.0.26.105')).source, 'Art-Net');
   await assert.rejects(poller.poll('127.0.0.1'), RangeError);
   await assert.rejects(readJson('10.0.26.108', '/write'), /Unsupported/);

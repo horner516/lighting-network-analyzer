@@ -1,7 +1,7 @@
 const { app, BrowserWindow, Menu, shell, Tray, nativeImage, dialog } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const { join } = require('node:path');
-const { writeFileSync } = require('node:fs');
+const { writeFileSync, existsSync } = require('node:fs');
 const { startLanServer } = require('./lan-server.cjs');
 
 const releases = 'https://github.com/horner516/lighting-network-analyzer/releases/latest';
@@ -85,7 +85,8 @@ function setupUpdater() {
 }
 
 // Preserve saved browser data and single-instance identity across the Lux Link rename.
-app.setPath('userData', join(app.getPath('appData'), 'lighting-network-analyzer'));
+const legacyProfile = join(app.getPath('appData'), 'Lighting Network Analyzer');
+app.setPath('userData', existsSync(legacyProfile) ? legacyProfile : join(app.getPath('appData'), 'lighting-network-analyzer'));
 
 if (!app.requestSingleInstanceLock()) {
   app.quit();

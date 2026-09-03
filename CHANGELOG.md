@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.5 — 2026-09-03
+
+- Added read-only ProPlex IQ Two web-monitor polling, verified against a real IQ Two 1616. Reads firmware, MAC, subnet mask, physical ports, direction, universe, protocol, RDM and configured DMX rate from the status page without image recognition or changing settings.
+- Preserves unavailable fields and falls back to Art-Net when the web monitor cannot be read. Non-decimal universe formats are explicitly unsupported; out-of-range values are flagged rather than silently corrected.
+- Keeps all-interface LAN serving and server address links; added a regression check for LAN binding and verified access through the host's lighting-network address.
+- Preserves either legacy installed-app profile location during the Lux Link rename.
+- Includes the Lux Link rename, NETRON API integration and EN12 physical port layout from 0.1.4.
+
 ## 0.1.4 — 2026-09-03
 
 - Renamed the app, installers and dashboard to **Lux Link**, preserving the app identifier and saved browser data.

@@ -1,5 +1,6 @@
 const http = require('node:http');
 const { validTarget } = require('./node-poller.cjs');
+const { pollProplex } = require('./proplex-web.cjs');
 
 // Read endpoints used by the NETRON EN12 V2.9.2 web monitor. Never call
 // configuration, cue, firmware or other write endpoints.
@@ -65,12 +66,19 @@ function normalizeNetron(ip, settings, identity, network, rawPorts, warnings = [
   };
 }
 
-function createDevicePoller({ artnetPoll, read = readJson, now = Date.now }) {
+function createDevicePoller({ artnetPoll, read = readJson, proplexPoll = pollProplex, now = Date.now }) {
   const pending = new Map(), cache = new Map();
+  async function fallback(ip) {
+    try { return await proplexPoll(ip); }
+    catch {
+      const result = await artnetPoll(ip);
+      return result.proplex ? { ...result, error: 'ProPlex web status unavailable or unsupported. Showing available Art-Net information only.' } : result;
+    }
+  }
   async function collect(ip) {
     let settings;
-    try { settings = await read(ip, '/Setting.json'); } catch { return artnetPoll(ip); }
-    if (!/^NETRON\s+\S/i.test(str(settings?.DeviceType))) return artnetPoll(ip);
+    try { settings = await read(ip, '/Setting.json'); } catch { return fallback(ip); }
+    if (!/^NETRON\s+\S/i.test(str(settings?.DeviceType))) return fallback(ip);
     const resources = ['/index.json', '/IP.json', '/DMXPorts.json'];
     // Sequential reads accommodate small embedded web servers.
     const values = [], warnings = [];

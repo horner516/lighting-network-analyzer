@@ -1,4 +1,4 @@
-## v0.1.4 — Lux Link and NETRON device integration
+## v0.1.5 — Lux Link, ProPlex and NETRON integration
 
 - Renamed the dashboard and desktop app to **Lux Link**, with matching installer names and the existing teal icon. The app identifier and saved browser profile are preserved.
 - Added read-only NETRON web API polling, verified on an EN12 running V2.9.2.
@@ -7,7 +7,9 @@
 - Art-Net tile numbering follows the NETRON web monitor; native addresses remain available in port details.
 - Polling failures show explicit warnings. Configuration is not proof of live signal or continuous device health. No simulated devices or readings are included.
 
-**ProPlex limitation:** web-monitor support remains pending. Art-Net discovery still supplies available identity and port labels, but the tested IQ Two does not report its sACN assignments or RDM state through Art-Net. Those values remain unknown.
+**New ProPlex web-monitor support:** reads IQ Two status-page firmware, MAC, subnet mask, direction, universe, protocol, RDM and configured DMX rate. Verified on a real IQ Two 1616. No forms are submitted or settings changed. If unavailable, the app falls back to Art-Net with a warning and preserves unknown fields. Decimal universe format is supported; invalid reported values are flagged. Configuration is not proof of signal or health.
+
+**LAN access:** the server listens on all IPv4 interfaces and displays usable address links for phones, tablets and other computers. Allow the dashboard TCP port on trusted networks; no internet port forwarding is required or recommended.
 
 Live polling and sACN/Art-Net reception require the local Windows/Mac app. The hosted dashboard cannot directly access your LAN. Existing Network features, channel-value viewing, packet-rate peaks and update checks are retained.
 
@@ -17,4 +19,4 @@ The installers are unsigned and the Mac app is not notarized. Follow your organi
 
 Checksums are included in SHA256SUMS.txt. Both platform builds run automated tests and packaged startup checks before publication.
 
-See the [changelog](https://github.com/horner516/lighting-network-analyzer/blob/v0.1.4/CHANGELOG.md).
+See the [changelog](https://github.com/horner516/lighting-network-analyzer/blob/v0.1.5/CHANGELOG.md).

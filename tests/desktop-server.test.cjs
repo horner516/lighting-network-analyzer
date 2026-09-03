@@ -48,3 +48,14 @@ test('invalid ports and missing bundled content produce clear startup errors', a
   await assert.rejects(startLanServer({ root, preferredPort: NaN }), /port must/);
   await assert.rejects(startLanServer({ root: join(root, 'not-present') }), /bundled dashboard is missing/);
 });
+
+test('LAN server binds all IPv4 interfaces and advertises non-loopback addresses', async () => {
+  const { networkInterfaces } = require('node:os');
+  const ips = [...new Set(Object.values(networkInterfaces()).flat().filter(item => item && !item.internal && item.family === 'IPv4').map(item => item.address))];
+  const lan = await startLanServer({ root, preferredPort: 48732, listenerOptions: { ports: { sacn: 0, artnet: 0 }, bindAddress: '127.0.0.1', joinMulticast: false } });
+  try {
+    assert.equal(lan.server.address().address, '0.0.0.0');
+    assert.deepEqual(lan.info().urls, ips.map(ip => `http://${ip}:${lan.port}`));
+    assert.equal((await fetch(lan.url)).status, 200);
+  } finally { lan.server.closeAllConnections(); await new Promise(resolve => lan.server.close(resolve)); }
+});
