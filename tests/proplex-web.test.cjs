@@ -2,6 +2,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { normalizeProplex, readStatus } = require('../electron/proplex-web.cjs');
 const { createDevicePoller } = require('../electron/netron-api.cjs');
+const { protocolSettings, pollProplex, readPage } = require('../electron/proplex-web.cjs');
 function fixture(type = '16U16IO') {
   const field = (name, value) => `<td><font size="2">${name}</font><br>${value}</td>`;
   return `<title>IQ Two 1616</title><img src="proplex_logo.png"><script>var node_type = "${type}";</script>
@@ -31,7 +32,16 @@ test('respects physical model counts, rejects other pages, and never guesses non
 test('missing port fields and unsupported protocol remain unknown', () => {
   const d=normalizeProplex('10.0.26.106',fixture().replace('<td>On</td>','<td></td>').replace('>sACN<','>Other<'));
   assert.equal(d.ports[0].rdm,null); assert.equal(d.ports[0].outputProtocol,null);
-  assert.equal(d.ports[0].outputAddress,null); assert.match(d.error,/Protocol/);
+  assert.equal(d.ports[0].outputAddress,null); assert.doesNotMatch(d.error,/Protocol was not recognized/);
+});
+
+test('protocol survives nested markup and preserves dual-protocol mode reported by IQ Two 2X', () => {
+  for (const value of ['<font color="green">sACN</font>', '<span>E1.31 (sACN)</span>', '<br>sACN']) {
+    const d = normalizeProplex('10.0.26.106', fixture().replace('>sACN<', `>${value}<`));
+    assert.equal(d.ports[0].outputProtocol, 'sACN');
+  }
+  assert.equal(normalizeProplex('10.0.26.106', fixture().replace('>sACN<','><b>Art-Net</b><')).ports[0].outputProtocol, 'Art-Net');
+  assert.equal(normalizeProplex('10.0.26.104', fixture().replace('>sACN<','>ArtNet / sACN<')).ports[0].outputProtocol, 'Art-Net / sACN');
 });
 test('poller uses ProPlex web status and reports unavailable without Art-Net fallback', async () => {
   const expected=normalizeProplex('10.0.26.106',fixture());
@@ -42,4 +52,17 @@ test('poller uses ProPlex web status and reports unavailable without Art-Net fal
   assert.equal(missing.responding, false); assert.deepEqual(missing.ports, []);
   assert.match(missing.error,/web\/API polling failed/);
   await assert.rejects(readStatus('127.0.0.1'),RangeError);
+});
+
+test('selected protocol setup checkboxes override status text using GET page reads only', async () => {
+  const page = '<img src="proplex_logo.png"><input name="ArtNetEnabled" type="checkbox" =""><input name="sACNEnabled" type="checkbox" checked=""><input name="RTTrPLEnabled" type="checkbox">';
+  assert.deepEqual(protocolSettings(page), { artnet: false, sacn: true, rttrpl: false, protocol: 'sACN' });
+  assert.equal(protocolSettings(page.replace('checkbox" =""','checkbox" checked=""')).protocol, 'Art-Net / sACN');
+  assert.equal(protocolSettings(page.replace(' checked=""','')).protocol, 'None enabled');
+  assert.equal(protocolSettings('<img src="proplex_logo.png">'), null);
+  const calls = [];
+  const d = await pollProplex('10.0.26.105', { read: async (ip,p) => { calls.push(p); return p === '/status.htm' ? fixture().replace('>sACN<','>ArtNet / sACN<') : page; } });
+  assert.deepEqual(calls, ['/status.htm','/protocol_setup.htm']);
+  assert.equal(d.ports[0].outputProtocol, 'sACN'); assert.equal(d.protocolSource, 'protocol_setup.htm');
+  await assert.rejects(readPage('10.0.26.105','/firmware_upgrade.htm'), RangeError);
 });

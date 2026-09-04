@@ -4,22 +4,30 @@ Standalone desktop and web dashboard for monitoring lighting network devices (sA
 
 ## Downloads
 
+**Version 0.1.7:** shared server-side device inventory, a single background polling cycle, menu-bar/system-tray-only startup, improved ProPlex protocol detection, and a compact dashboard toolbar.
+
+The header **Layout** button opens an IP-address list. Drag the grips (mouse or touch), or use the arrow controls, to arrange dashboard cards. Delete marks a device for removal; **Undo deletions** or **Cancel** can reverse draft changes. **Save layout** applies the order and removals server-wide. Removed nodes stop being polled and may be added again by IP. Concurrent edits are rejected if the server list changed while the editor was open. After the first saved layout, automatic imports from legacy browser lists are disabled to prevent deleted devices from reappearing.
+
+In version 0.1.7, all browsers opening the same LAN server share its device list. The desktop host saves it as `devices.json` in its existing app-data folder; the source-only launcher uses `~/.lux-link/devices.json` (override with `LNA_DEVICE_STORE`). Browser-local entries are imported once when that browser opens the updated server; the previous desktop window's separate profile may require re-adding entries. Run one server on the lighting network and have every viewer use that server's address. The dashboard has no authentication: only trusted LAN clients should be able to access it, including its shared inventory controls.
+
+The ProPlex reader uses read-only GET requests for `status.htm` and `protocol_setup.htm`. Selected `ArtNetEnabled` and `sACNEnabled` controls determine configured protocol, including dual mode; no forms are submitted. Green/blue accents identify protocol, not proof of DMX output. Mac uses its menu-bar icon with no Dock window; Windows uses a notification-area tray icon, not a Windows Widgets-panel extension. Both offer **Open Browser**, update checks and Quit.
+
 The installers include the app and its LAN server. **No Node.js or developer tools are required.**
 
 | Platform | Download | Compatibility |
 | --- | --- | --- |
-| Windows | [Download Windows installer](https://github.com/horner516/lighting-network-analyzer/releases/download/v0.1.6/Lux-Link-0.1.6-windows-x64.exe) | Windows 10 or later, 64-bit |
-| macOS | [Download Mac installer](https://github.com/horner516/lighting-network-analyzer/releases/download/v0.1.6/Lux-Link-0.1.6-mac-universal.dmg) | Universal: Apple silicon and Intel |
+| Windows | [Download Windows installer](https://github.com/horner516/lighting-network-analyzer/releases/download/v0.1.7/Lux-Link-0.1.7-windows-x64.exe) | Windows 10 or later, 64-bit |
+| macOS | [Download Mac installer](https://github.com/horner516/lighting-network-analyzer/releases/download/v0.1.7/Lux-Link-0.1.7-mac-universal.dmg) | Universal: Apple silicon and Intel |
 
 See [all releases and checksums](https://github.com/horner516/lighting-network-analyzer/releases). GitHub's automatic **Source code** downloads are not installable apps.
 
-**Initial release:** installers are unsigned and the Mac app is not notarized. Your operating system may show an unknown-publisher warning. On Mac, open the disk image, drag the app to Applications, then approve it in System Settings → Privacy & Security if required by your system. Follow your organization's software policy.
+**Signing status:** installers are unsigned and the Mac app is not notarized. Your operating system may show an unknown-publisher warning. On Mac, open the disk image, drag the app to Applications, then approve it in System Settings → Privacy & Security if required by your system. Follow your organization's software policy.
 
-**Version 0.1.6:** Lux Link now reads ProPlex IQ Two web-monitor status and NETRON web API configuration, with physical port cards. It also includes sACN and Art-Net reception, live channel values, and automatic web/API device polling. Add by IP saves a device and requests its available identity and port information. No simulated devices are included. A status reply is not a continuous health check. See the [changelog](CHANGELOG.md).
+**Device monitoring:** Lux Link now reads ProPlex IQ Two web-monitor status and NETRON web API configuration, with physical port cards. It also includes sACN and Art-Net reception, live channel values, and automatic web/API device polling. Add by IP saves a device and requests its available identity and port information. No simulated devices are included. A status reply is not a continuous health check. See the [changelog](CHANGELOG.md).
 
 ## Device cards and polling
 
-Saved devices are polled through their live web/API interface on load and when added. Polling repeats while the dashboard is open, with 15 seconds between completed sequential cycles. **Poll Nodes** requests an immediate refresh. The server briefly caches duplicate requests from multiple browsers. Art-Net remains a receive-only traffic source on Network, not a source for device configuration.
+Saved devices are polled through their live web/API interface when the server starts and when added. A single server-owned polling cycle continues even without a browser open, with 15 seconds between completed sequential cycles. **Poll Nodes** requests an immediate refresh; simultaneous requests share the same cycle. Browsers read cached snapshots rather than polling devices themselves. Art-Net remains a receive-only traffic source on Network, not a source for device configuration.
 
 ProPlex 16-port cards use two rows of eight; NETRON EN12 uses one row of twelve. Six-port ProPlex cards use two rows of three and eight-port cards use one row. Click a port for read-only details.
 
@@ -29,13 +37,13 @@ The local app detects NETRON devices through their web-monitor JSON API and read
 
 Global RDM processing and per-port RDM must both be enabled for the card to show RDM on. Art-Net tile universes follow the device web monitor's numbering preference; native addresses are preserved in port details. Configured frame rate is not measured traffic. Failed optional endpoints produce partial information with an explicit warning. Non-NETRON devices are checked for a supported ProPlex web monitor; unsupported devices show polling unavailable.
 
-Added devices appear as compact port cards. **Poll Nodes** refreshes NETRON configuration through its web API. ProPlex IQ Two configuration comes from its read-only `status.htm` page. When neither web interface is supported/reachable, the card shows polling unavailable. No configuration or lighting output is sent. Polling also runs when the page loads and when an IP is added; requests run sequentially and repeated requests are briefly cached.
+Added devices appear as compact port cards. **Poll Nodes** refreshes NETRON configuration through its web API. ProPlex IQ Two configuration comes from read-only `status.htm` and `protocol_setup.htm` pages. When neither web interface is supported/reachable, the card shows polling unavailable. No configuration or lighting output is sent. Polling starts with the server and when an IP is added; requests run sequentially in one shared background cycle.
 
 ProPlex IQ Two cards use physical A–P labels, excluding secondary merge inputs and master-control bindings. Layouts follow the earlier reference: 16 ports in two rows of eight, eight ports in one row, and six ports in two rows of three. NETRON EN12 cards display all twelve ports in one physical row, left to right. Unsupported devices do not display guessed ports. A port opens a read-only detail panel.
 
 ### ProPlex IQ Two web monitor
 
-Verified with IQ Two 1616 master firmware 2.36. The app reads `status.htm` to obtain subnet mask, MAC, firmware, direction, universe, protocol, RDM and configured DMX rate. It never submits forms, sends remote-screen controls, changes device settings or generates lighting output. No image recognition is required.
+Verified with IQ Two 1616 master firmware 2.36. The app reads `status.htm` to obtain subnet mask, MAC, firmware, direction, universe, RDM and configured DMX rate. It reads the selected protocol controls from `protocol_setup.htm`, supporting sACN, Art-Net and dual mode; status-page protocol text is a fallback. It never submits forms, sends remote-screen controls, changes device settings or generates lighting output. No image recognition is required.
 
 The supported status-page format identifies physical 4-, 6-, 8- or 16-port models. Only the 16-port hardware has been live-tested. Universe display must be Decimal; other formats remain unknown with a warning. Reported values outside protocol limits are displayed with an error rather than silently changed. The tested node reports port L as sACN universe 0, which is outside the valid sACN range.
 
@@ -98,7 +106,7 @@ NETWORK_ANALYZER_PORT=50000 NETWORK_ANALYZER_HOST=0.0.0.0 pnpm run start:lan
 
 ## Windows and Mac desktop app
 
-The installed app serves its bundled dashboard over the LAN and opens a desktop window. Closing the window keeps the server running; choose **Quit** from the tray/menu-bar icon to stop it. Allow the app through your firewall on trusted/private networks when prompted. No login is provided; do not expose the server to the public internet.
+The installed app serves its bundled dashboard over the LAN and starts only in the Mac menu bar or Windows system tray. It does not automatically open a browser or Dock window. Choose **Open Browser** to view the dashboard and **Quit** to stop the server. Allow the app through your firewall on trusted/private networks when prompted. No login is provided; do not expose the server to the public internet.
 
 To run from source:
 
@@ -111,8 +119,7 @@ It provides:
 
 - Tray icon matching the dashboard's teal pulse logo
 - Tray menu:
-  - Open Dashboard
-  - Open in Browser
+  - Open Browser
   - Check for Updates (GitHub)
   - Quit
 - Manual update checks via **Right Click** tray action in production builds
@@ -137,7 +144,7 @@ Pushing a version tag such as `v0.1.1` triggers native Windows and Mac builds. G
 
 ## Updates
 
-The dashboard header shows its version and a **Check for updates** button. This checks the repository's latest public stable GitHub release. If it is newer, the app opens the GitHub download page in a browser window. A visible link is also provided if popup blocking prevents opening the window. No GitHub sign-in or token is required; internet access is needed. Offline and rate-limit errors are displayed explicitly.
+The dashboard header shows its version and a **Check for updates** button. The browser asks its server to check the repository's latest public stable GitHub release against the installed server version. If newer, the browser opens the GitHub download page. A visible link is also provided if popup blocking prevents opening the window. No GitHub sign-in or token is required; the server needs internet access. Offline and rate-limit errors are displayed explicitly. The hosted website checks its own deployed version; use the local server to check your installed app.
 
 Use **Check for Updates** in the tray/menu-bar menu. Windows can download and install a newer release after confirmation. This unsigned Mac release checks for newer versions and opens GitHub for manual installation; seamless Mac updates require signed releases. Offline checks report an error without interrupting the LAN server.
 

@@ -4,6 +4,10 @@ const path = require('node:path');
 const { networkInterfaces } = require('node:os');
 const { createSignalListener } = require('./signal-listener.cjs');
 const { createDevicePoller } = require('./netron-api.cjs');
+const { createDeviceInventory } = require('./device-inventory.cjs');
+const { validTarget } = require('./node-poller.cjs');
+const { createReleaseChecker } = require('../lib/release-check.cjs');
+const { version } = require('../package.json');
 
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.woff2': 'font/woff2' };
 
@@ -14,19 +18,52 @@ function addresses(port, host) {
   return { port, urls: ips.map(ip => `http://${ip.includes(':') ? `[${ip}]` : ip}:${port}`) };
 }
 
-async function startLanServer({ root, preferredPort = 47652, host = '0.0.0.0', listenerOptions = {} }) {
+async function startLanServer({ root, preferredPort = 47652, host = '0.0.0.0', listenerOptions = {}, deviceStorePath = null, pollDevice, inventoryIntervalMs = 15000, releaseRequest }) {
   if (!Number.isInteger(preferredPort) || preferredPort < 1024 || preferredPort > 65535) throw new Error('Server port must be an integer from 1024 to 65535.');
   const base = path.resolve(root);
   if (!fs.existsSync(path.join(base, 'index.html'))) throw new Error('The bundled dashboard is missing. Reinstall the app.');
   let listener;
+  const checkRelease = createReleaseChecker(version, releaseRequest);
   const devicePoller = createDevicePoller();
+  const inventory = createDeviceInventory({ file: deviceStorePath, poll: pollDevice || (ip => devicePoller.poll(ip)), intervalMs: inventoryIntervalMs });
   const server = http.createServer((req, res) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Cache-Control', 'no-store');
-    if (!['GET', 'HEAD'].includes(req.method)) { res.writeHead(405, { Allow: 'GET, HEAD' }); res.end(); return; }
     let pathname;
     try { pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname); }
     catch { res.writeHead(400); res.end(); return; }
+    const foreignOrigin = req.headers['sec-fetch-site'] === 'cross-site' || (req.headers.origin && req.headers.origin !== `http://${req.headers.host}`);
+    if (req.method === 'POST' && ['/api/devices', '/api/devices/refresh', '/api/devices/layout'].includes(pathname)) {
+      res.setHeader('Content-Type', 'application/json');
+      if (foreignOrigin) { res.writeHead(403); res.end('{}'); return; }
+      if (!/^application\/json(?:;|$)/i.test(req.headers['content-type'] || '')) { res.writeHead(415); res.end('{}'); return; }
+      let size = 0, oversized = false; const chunks = [];
+      req.on('data', chunk => { size += chunk.length; if (size > 65536) oversized = true; else chunks.push(chunk); });
+      req.on('end', () => {
+        if (oversized) { res.writeHead(413); res.end('{}'); return; }
+        try {
+          const body = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
+          if (pathname === '/api/devices') inventory.add(body.devices || [body], { legacyImport: body.legacyImport === true });
+          else if (pathname === '/api/devices/layout') inventory.layout(body);
+          else void inventory.refresh();
+          res.end(JSON.stringify(inventory.snapshot()));
+        } catch (error) { res.writeHead(error.statusCode === 409 ? 409 : error instanceof RangeError || error instanceof SyntaxError ? 400 : 503); res.end(JSON.stringify({ error: error.message })); }
+      });
+      return;
+    }
+    if (!['GET', 'HEAD'].includes(req.method)) { res.writeHead(405, { Allow: 'GET, HEAD' }); res.end(); return; }
+    if (pathname === '/api/updates') {
+      res.setHeader('Content-Type', 'application/json');
+      if (foreignOrigin) { res.writeHead(403); res.end('{}'); return; }
+      if (req.method === 'HEAD') { res.end(); return; }
+      void checkRelease().then(result => res.end(JSON.stringify(result))).catch(error => { res.writeHead(502); res.end(JSON.stringify({ error: error.message })); });
+      return;
+    }
+    if (pathname === '/api/devices') {
+      res.setHeader('Content-Type', 'application/json');
+      res.end(req.method === 'HEAD' ? undefined : JSON.stringify(inventory.snapshot()));
+      return;
+    }
     if (pathname === '/api/server-info') {
       res.setHeader('Content-Type', 'application/json');
       res.end(req.method === 'HEAD' ? undefined : JSON.stringify(addresses(server.address().port, host)));
@@ -41,7 +78,12 @@ async function startLanServer({ root, preferredPort = 47652, host = '0.0.0.0', l
       res.setHeader('Content-Type', 'application/json');
       if (req.headers['sec-fetch-site'] === 'cross-site' || (req.headers.origin && req.headers.origin !== `http://${req.headers.host}`)) { res.writeHead(403); res.end('{}'); return; }
       if (!listener || req.method === 'HEAD') { res.writeHead(503); res.end(); return; }
-      devicePoller.poll(new URL(req.url, 'http://localhost').searchParams.get('ip') || '').then(result => res.end(JSON.stringify(result))).catch(error => { res.writeHead(error instanceof RangeError ? 400 : 503); res.end(JSON.stringify({ error: error.message })); });
+      const ip = new URL(req.url, 'http://localhost').searchParams.get('ip') || '';
+      if (!validTarget(ip)) { res.writeHead(400); res.end('{}'); return; }
+      // Compatibility reads return the shared snapshot; a browser never polls a node itself.
+      const result = inventory.snapshot().info[ip];
+      if (!result) { res.writeHead(404); res.end(JSON.stringify({ error: 'Add this device to the shared server inventory.' })); return; }
+      res.end(JSON.stringify(result));
       return;
     }
     if (pathname === '/api/signals/channel') {
@@ -84,7 +126,8 @@ async function startLanServer({ root, preferredPort = 47652, host = '0.0.0.0', l
       const localHost = host === '0.0.0.0' ? '127.0.0.1' : host === '::' ? '[::1]' : host.includes(':') ? `[${host}]` : host;
       listener = createSignalListener(listenerOptions);
       await listener.ready;
-      server.on('close', () => listener.close());
+      inventory.start();
+      server.on('close', () => { inventory.close(); listener.close(); });
       return { server, port, url: `http://${localHost}:${port}`, info: () => addresses(port, host) };
     } catch (error) {
       if (error.code !== 'EADDRINUSE') throw error;

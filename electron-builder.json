@@ -8,6 +8,7 @@
     "desktop-web/**/*",
     "public/app-icon.*",
     "electron/**/*",
+    "lib/release-check.cjs",
     "package.json"
   ],
   "asar": true,
@@ -28,6 +29,7 @@
     "installerHeaderIcon": "public/app-icon.ico"
   },
   "mac": {
+    "extendInfo": { "LSUIElement": true },
     "category": "public.app-category.utilities",
     "icon": "public/app-icon.icns",
     "target": ["dmg", "zip"],

@@ -1,23 +1,20 @@
-## v0.1.6 — Lux Link, ProPlex and NETRON integration
+## v0.1.7 — Lux Link shared inventory and tray host
 
-- Device cards now poll live web/API data automatically, with 15 seconds between polling cycles. Art-Net discovery fallback has been removed; the Network traffic listener remains.
-- Renamed the dashboard and desktop app to **Lux Link**, with matching installer names and the existing teal icon. The app identifier and saved browser profile are preserved.
-- Added read-only NETRON web API polling, verified on an EN12 running V2.9.2.
-- Displays reported firmware, MAC, on-time, subnet mask and port configuration: direction, protocol, universe, effective RDM state, configured frame rate, merge mode and channel range.
-- NETRON EN12 ports follow the physical front panel: one compact row, numbered 1–12. ProPlex 16-port cards retain two rows of eight.
-- Art-Net tile numbering follows the NETRON web monitor; native addresses remain available in port details.
-- Polling failures show explicit warnings. Configuration is not proof of live signal or continuous device health. No simulated devices or readings are included.
+- Fixed the dashboard update button: the server checks GitHub against its installed version and the browser opens downloads when a newer stable release exists. A visible download link handles popup blocking.
+- One server-owned device list is shared by every browser and saved across restarts. A single sequential polling cycle continues in the background, even without a dashboard open.
+- New header **Layout** editor: drag device IPs into order, delete devices, undo draft deletions, and save or cancel. Saved changes apply to all viewers. Stale edits are rejected, and deleted devices cannot return through late poll replies or subsequent automatic legacy imports.
+- ProPlex protocol selection now comes from read-only `protocol_setup.htm` controls, with status-page fallback. Verified sACN-only and dual Art-Net/sACN configurations.
+- Mac starts in the menu bar without a Dock window; Windows starts in the system tray. Choose **Open Browser** to view the dashboard. Update checks and Quit remain available.
+- Removed redundant headings and configuration messages. Search, Add by IP and Poll Nodes now align with Overview/Network in a responsive toolbar.
+- Green sACN, blue Art-Net and teal dual-mode port accents. Output glow requires explicit reported activity; configuration alone is not evidence of live output or health.
+- Existing NETRON API support, physical port cards, sACN/Art-Net listeners, live channel values, peak packet rates and update checks remain available.
 
-**New ProPlex web-monitor support:** reads IQ Two status-page firmware, MAC, subnet mask, direction, universe, protocol, RDM and configured DMX rate. Verified on a real IQ Two 1616. No forms are submitted or settings changed. If unavailable, current configuration is cleared with an explicit warning. Device cards do not fall back to Art-Net discovery. Decimal universe format is supported; invalid reported values are flagged. Configuration is not proof of signal or health.
+**Upgrade note:** browser-local device entries import when that browser first opens the updated LAN server. Entries in the old desktop window's separate profile may need to be added again by IP. Saving a layout closes automatic legacy imports to prevent deleted entries from returning; manual Add by IP remains available.
 
-**LAN access:** the server listens on all IPv4 interfaces and displays usable address links for phones, tablets and other computers. Allow the dashboard TCP port on trusted networks; no internet port forwarding is required or recommended.
+**LAN access:** run one host and open its displayed IP/port from other devices. Preferred TCP port 47652 automatically moves when occupied. Allow the dashboard port and UDP 5568/6454 on trusted networks. The dashboard has no login: do not expose it to the internet. The hosted website cannot poll LAN nodes or receive lighting UDP; use the local app.
 
-Live polling and sACN/Art-Net reception require the local Windows/Mac app. The hosted dashboard cannot directly access your LAN. Existing Network features, channel-value viewing, packet-rate peaks and update checks are retained.
+Download the Windows x64 EXE or universal Mac DMG (Apple silicon and Intel). Both include the LAN server; no developer tools are required. Quit the previous app before installing. Installers are unsigned and the Mac app is not notarized; follow your organization's software policy. Windows updates can install after confirmation; Mac updates open GitHub for manual installation.
 
-Download the Windows x64 EXE or universal Mac DMG (Apple silicon and Intel). Both include the LAN server; no developer tools are required. Port 47652 is preferred, with automatic fallback when occupied. Actual server addresses appear in the header.
+Automated tests and packaged startup checks run on both platforms before publication. SHA256SUMS.txt contains installer checksums.
 
-The installers are unsigned and the Mac app is not notarized. Follow your organization's software policy. Windows tray updates can download and install after confirmation; Mac updates open GitHub for manual installation. Quit the old Mac app before installing Lux Link.
-
-Checksums are included in SHA256SUMS.txt. Both platform builds run automated tests and packaged startup checks before publication.
-
-See the [changelog](https://github.com/horner516/lighting-network-analyzer/blob/v0.1.6/CHANGELOG.md).
+See the [changelog](https://github.com/horner516/lighting-network-analyzer/blob/v0.1.7/CHANGELOG.md).

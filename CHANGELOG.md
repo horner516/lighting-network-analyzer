@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.1.7 — 2026-09-03
+
+- Dashboard update checks now run on the server against GitHub's latest stable release, compare the installed server version, and open the trusted download page when newer. Offline/rate-limit errors and a fallback download link remain visible.
+- Removed the Lighting network heading and Device inventory subtitle. Aligned Search, Add by IP and Poll Nodes alongside Overview/Network in one responsive toolbar.
+- Added a header Layout editor listing device IPs, with mouse/touch dragging, keyboard/up/down controls, draft deletion, undo and Save/Cancel. Saved order and deletions are shared across browsers and persist across server restarts.
+- Deleted nodes are removed from polling; in-flight replies cannot restore them. Stale layout edits return a conflict instead of overwriting another browser's changes. Saving a layout closes automatic legacy imports so older browser lists cannot resurrect deleted devices; Add by IP remains available.
+- Server-owned device inventory saved to disk and shared across all browsers. One server polling cycle runs even when no browser is open; browser refreshes read cached results instead of polling nodes.
+- Existing manual entries in a browser are merged into the shared list once when that browser opens the updated server. Entries trapped in the old desktop window's separate browser profile may need to be added again.
+- Mac starts as a menu-bar agent without a Dock window; Windows starts in the system tray. Open Browser launches the dashboard only when requested.
+- ProPlex protocol detection reads ArtNetEnabled/sACNEnabled checkbox state from protocol_setup.htm; verified sACN-only on 10.0.26.105 and dual Art-Net/sACN on 10.0.26.104. Read-only status-page parsing remains a fallback.
+- Removed verbose ProPlex snapshot text, Configuration retrieved, and Protocol was not recognized from device cards.
+- Restored green sACN and blue Art-Net port accents from the approved preview, with teal for dual mode and red errors. Live-output glow requires explicit device-reported activity; configuration alone is not treated as output confirmation.
+- Windows x64 and universal Mac installers are built and smoke-tested by the release workflow before publication.
+
 ## 0.1.6 — 2026-09-03
 
 - Device cards now use live ProPlex web-monitor and NETRON API polling exclusively; removed Art-Net discovery fallback for device information.

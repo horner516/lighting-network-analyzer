@@ -1,43 +1,25 @@
-const { app, BrowserWindow, Menu, shell, Tray, nativeImage, dialog } = require('electron');
+const { app, Menu, shell, Tray, nativeImage, dialog } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const { join } = require('node:path');
 const { writeFileSync, existsSync } = require('node:fs');
 const { startLanServer } = require('./lan-server.cjs');
 
 const releases = 'https://github.com/horner516/lighting-network-analyzer/releases/latest';
-let mainWindow;
 let tray;
 let lan;
-let quitting = false;
 let updateState = '';
 let checking = false;
 const iconPath = join(__dirname, '..', 'public', process.platform === 'win32' ? 'app-icon.ico' : 'app-icon.png');
 
 function showDashboard() {
   if (!lan) return;
-  if (mainWindow) { mainWindow.show(); mainWindow.focus(); return; }
-  mainWindow = new BrowserWindow({
-    width: 1360, height: 920, minWidth: 800, minHeight: 600,
-    icon: iconPath, title: `Lux Link v${app.getVersion()}`,
-    webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true },
-  });
-  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    if (url === lan.url || lan.info().urls.includes(url.replace(/\/$/, '')) || url === releases) void shell.openExternal(url);
-    return { action: 'deny' };
-  });
-  mainWindow.webContents.on('will-navigate', (event, url) => {
-    if (new URL(url).origin !== lan.url) event.preventDefault();
-  });
-  mainWindow.on('close', event => { if (!quitting) { event.preventDefault(); mainWindow.hide(); } });
-  mainWindow.on('closed', () => { mainWindow = null; });
-  void mainWindow.loadURL(lan.url);
+  void shell.openExternal(lan.url).catch(error => dialog.showErrorBox('Unable to open browser', String(error.message || error)));
 }
 
 function refreshMenu() {
   if (!tray) return;
   tray.setContextMenu(Menu.buildFromTemplate([
-    { label: 'Open Dashboard', click: showDashboard },
-    { label: 'Open in Browser', click: () => shell.openExternal(lan.url) },
+    { label: 'Open Browser', click: showDashboard },
     { label: `Server port: ${lan.port}`, enabled: false },
     { type: 'separator' },
     { label: `Check for Updates${updateState ? ` (${updateState})` : ''}`, enabled: !checking, click: () => checkForUpdates(true) },
@@ -78,7 +60,7 @@ function setupUpdater() {
   autoUpdater.on('error', () => { updateState = 'check failed'; refreshMenu(); });
   autoUpdater.on('update-downloaded', async () => {
     const result = await dialog.showMessageBox({ message: 'Update ready to install.', buttons: ['Restart and install', 'Later'], cancelId: 1 });
-    if (result.response === 0) { quitting = true; autoUpdater.quitAndInstall(); }
+    if (result.response === 0) autoUpdater.quitAndInstall();
   });
   setInterval(() => void checkForUpdates(), 30 * 60 * 1000).unref();
   void checkForUpdates();
@@ -93,7 +75,8 @@ if (!app.requestSingleInstanceLock()) {
 } else {
   app.on('second-instance', showDashboard);
   app.whenReady().then(async () => {
-    lan = await startLanServer({ root: join(__dirname, '..', 'desktop-web'), preferredPort: Number(process.env.NETWORK_ANALYZER_PORT || 47652), host: process.env.NETWORK_ANALYZER_HOST || '0.0.0.0' });
+    if (process.platform === 'darwin') app.dock?.hide();
+    lan = await startLanServer({ root: join(__dirname, '..', 'desktop-web'), deviceStorePath: join(app.getPath('userData'), 'devices.json'), preferredPort: Number(process.env.NETWORK_ANALYZER_PORT || 47652), host: process.env.NETWORK_ANALYZER_HOST || '0.0.0.0' });
     // Used by packaged smoke checks; never enables Node access in the renderer.
     if (process.env.LNA_SMOKE_TEST === '1') {
       const response = await fetch(lan.url);
@@ -108,7 +91,6 @@ if (!app.requestSingleInstanceLock()) {
     tray.setToolTip('Lux Link');
     refreshMenu();
     tray.on('double-click', showDashboard);
-    showDashboard();
     setupUpdater();
   }).catch(error => {
     if (process.env.LNA_SMOKE_TEST === '1') { console.error(error); app.exit(1); return; }
@@ -119,4 +101,4 @@ if (!app.requestSingleInstanceLock()) {
 
 app.on('activate', showDashboard);
 app.on('window-all-closed', () => {});
-app.on('before-quit', () => { quitting = true; lan?.server.close(); lan?.server.closeAllConnections(); });
+app.on('before-quit', () => { lan?.server.close(); lan?.server.closeAllConnections(); });

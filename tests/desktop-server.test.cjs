@@ -11,7 +11,7 @@ test('packaged server skips occupied ports and serves dashboard, assets and actu
   let lan;
   try {
     const preferredPort = occupied.address().port;
-    lan = await startLanServer({ root, preferredPort, host: '127.0.0.1', listenerOptions: { ports: { sacn: 0, artnet: 0 }, bindAddress: '127.0.0.1', joinMulticast: false } });
+    lan = await startLanServer({ root, preferredPort, host: '127.0.0.1', releaseRequest: async () => Response.json({tag_name:'v99.0.0'}), listenerOptions: { ports: { sacn: 0, artnet: 0 }, bindAddress: '127.0.0.1', joinMulticast: false } });
     assert.notEqual(lan.port, preferredPort);
     const home = await fetch(lan.url);
     const html = await home.text();
@@ -21,6 +21,10 @@ test('packaged server skips occupied ports and serves dashboard, assets and actu
     assert.equal((await fetch(lan.url + script)).status, 200);
     const info = await fetch(lan.url + '/api/server-info').then(res => res.json());
     assert.deepEqual(info, { port: lan.port, urls: [lan.url] });
+    const update = await fetch(lan.url + '/api/updates').then(res => res.json());
+    assert.equal(update.currentVersion, require('../package.json').version);
+    assert.equal(update.newer, true);
+    assert.equal((await fetch(lan.url + '/api/updates', {headers:{Origin:'https://other.example'}})).status,403);
     const signals = await fetch(lan.url + '/api/signals').then(res => res.json());
     assert.equal(signals.available, true);
     assert.equal(signals.protocols.sACN.status, 'listening');
