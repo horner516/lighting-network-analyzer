@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.2 — 2026-09-06
 
 - Added grandMA Web Remote screen reading in the native Mac app. Lux Link opens the Remote user's Network view and uses macOS text recognition to read the console's session name, show file and session status. Verified live against `192.168.1.11` as session `LITE_4`, show file `Exe summit patch`, status `IdleMaster`.
 - Console Web Remote polling runs once when a console is added and only on demand afterward. Dedicated **Poll Consoles** and **Poll Nodes** controls sit beside their corresponding section headings, while the global **Poll All Devices** control refreshes consoles, nodes and switches together.
