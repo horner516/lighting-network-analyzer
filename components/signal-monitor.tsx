@@ -2,11 +2,13 @@
 import { useEffect, useState } from 'react';
 import { Radio } from 'lucide-react';
 import { ChannelViewer } from '@/components/channel-viewer';
+import { SignalTransmitter } from '@/components/signal-transmitter';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 type Signal = { id: string; protocol: string; universe: number; ip: string; cid: string; sourceName: string; priority: number | null; status: string; lastSeen: number; rate: number; packets: number; slots: number; nonzero: number; previewLevels: number[] };
 type Snapshot = { available: boolean; sampledAt: number; universeSpec: string; droppedSources: number; protocols: Record<string, { port: number; status: string; error: string; received: number; ignored: number; peakRate: number }>; memberships: { name: string; address: string; joined: number; failed: number; error: string }[]; signals: Signal[] };
 
-export function SignalMonitor({ compact = false }: { compact?: boolean }) {
+function Receiver({ compact = false }: { compact?: boolean }) {
   const [data, setData] = useState<Snapshot | null>(null);
   const [state, setState] = useState('connecting');
   const [selected, setSelected] = useState('');
@@ -35,7 +37,7 @@ export function SignalMonitor({ compact = false }: { compact?: boolean }) {
   }, []);
   const detail = data?.signals.find(s => s.id === selected);
   return <section aria-label="Network" className="overflow-hidden rounded-lg border border-white/10 bg-[#171d22]">
-    {!compact && <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 p-4"><div><h2 className="flex items-center gap-2 font-semibold"><Radio size={18} className="text-teal-300"/>Network</h2><p className="mt-1 text-sm text-slate-400">sACN & Art-Net · received by this server · no lighting data transmitted</p></div><span role="status" className="text-sm text-slate-400">{state === 'connected' ? 'Receiver connected' : state === 'connecting' ? 'Connecting to receiver…' : 'Local receiver unavailable'}</span></div>}
+    {!compact && <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 p-4"><div><h2 className="flex items-center gap-2 font-semibold"><Radio size={18} className="text-teal-300"/>Receiver</h2><p className="mt-1 text-sm text-slate-400">sACN & Art-Net traffic received by this server</p></div><span role="status" className="text-sm text-slate-400">{state === 'connected' ? 'Receiver connected' : state === 'connecting' ? 'Connecting to receiver…' : 'Local receiver unavailable'}</span></div>}
     {!compact && <ChannelViewer />}
     <div className="grid gap-3 p-4 sm:grid-cols-2">{['sACN', 'Art-Net'].map(protocol => {
       const listener = data?.protocols[protocol];
@@ -52,4 +54,9 @@ export function SignalMonitor({ compact = false }: { compact?: boolean }) {
     </>}
     {!compact && <p className="border-t border-white/10 p-4 text-sm text-slate-400">Visibility is limited to traffic reaching the server. Other VLANs and unicast addressed elsewhere may not be visible. Signal presence is not a device-health check.</p>}
   </section>;
+}
+
+export function SignalMonitor({ compact = false }: { compact?: boolean }) {
+  if (compact) return <Receiver compact/>;
+  return <Tabs defaultValue="receiver" className="gap-4"><TabsList aria-label="Network mode" className="bg-[#1b252c] text-slate-100"><TabsTrigger value="receiver" className="px-5 text-slate-300 data-active:bg-teal-300/15 data-active:text-teal-200">Receiver</TabsTrigger><TabsTrigger value="transmit" className="px-5 text-slate-300 data-active:bg-teal-300/15 data-active:text-teal-200">Transmit</TabsTrigger></TabsList><TabsContent value="receiver"><Receiver/></TabsContent><TabsContent value="transmit"><SignalTransmitter/></TabsContent></Tabs>;
 }
