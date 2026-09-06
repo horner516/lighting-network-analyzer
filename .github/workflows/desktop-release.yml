@@ -21,6 +21,7 @@ jobs:
           version: '11.19.0'
       - run: test "$(uname -m)" = arm64
       - run: pnpm install --frozen-lockfile
+      - run: pnpm run desktop:web
       - run: pnpm run desktop:test
       - run: pnpm run mac:native
       - name: Check packaged server startup
