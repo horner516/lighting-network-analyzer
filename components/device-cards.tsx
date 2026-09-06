@@ -7,11 +7,12 @@ import { portAppearance } from '@/lib/port-appearance';
 type Port = { index: number; label: string; direction: string; inputAddress: number | null; outputAddress: number | null; inputProtocol: string | null; outputProtocol: string | null; active: boolean | null; rdm: boolean | null; error: string | null; displayUniverse?: number | null; addressNote?: string; frameRate?: number | null; mergeMode?: string; channelFrom?: number | null; channelTo?: number | null; channelOffset?: number | null };
 export type NodeInfo = { ip: string; checkedAt: number; responding: boolean; name: string; description: string; source: string; report: string; subnetMask: string | null; firmwareCode: number | null; firmware?: string; uptime?: string; mac: string; proplex: boolean; ports: Port[]; note: string; error: string };
 
-export function DeviceCards({ devices, query, info, pollingIp }: { devices: ManualDevice[]; query: string; info: Record<string, NodeInfo>; pollingIp: string }) {
-  const visible = devices.filter(device => `${device.name} ${device.ip} ${info[device.ip]?.description || ''}`.toLowerCase().includes(query.toLowerCase()));
+export function DeviceCards({ devices, query, info, pollingIp, deviceType = 'Node' }: { devices: ManualDevice[]; query: string; info: Record<string, NodeInfo>; pollingIp: string; deviceType?: ManualDevice['deviceType'] }) {
+  const typed = devices.filter(device => device.deviceType === deviceType);
+  const visible = typed.filter(device => `${device.name} ${device.ip} ${info[device.ip]?.description || ''}`.toLowerCase().includes(query.toLowerCase()));
   return <div className="space-y-4">
-    <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="font-semibold">Devices <span className="text-slate-400">{devices.length}</span></h2><p className="text-sm text-slate-400">Server-managed polling · shared by every browser</p></div></div>
-    {!visible.length && <p className="rounded-lg border border-white/10 p-8 text-center text-slate-400">{devices.length ? 'No matching devices.' : 'Add a device by IP to fetch its identity and available port information.'}</p>}
+    <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="font-semibold">{deviceType === 'Switch' ? 'Switches' : `${deviceType}s`} <span className="text-slate-400">{typed.length}</span></h2><p className="text-sm text-slate-400">Server-managed polling · shared by every browser</p></div></div>
+    {!visible.length && <p className="rounded-lg border border-white/10 p-8 text-center text-slate-400">{typed.length ? 'No matching devices.' : `Add a ${deviceType.toLowerCase()} by IP to begin monitoring.`}</p>}
     {visible.map(device => {
       const node = info[device.ip];
       const ports = node?.ports || [];

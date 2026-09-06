@@ -3,12 +3,14 @@
 import { useEffect, useState } from 'react';
 import { Activity, Plus, RefreshCw, Search } from 'lucide-react';
 import { DeviceCards, type NodeInfo } from '@/components/device-cards';
+import { ConsoleCards } from '@/components/console-cards';
 import { DeviceLayout } from '@/components/device-layout';
 import { SignalMonitor } from '@/components/signal-monitor';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { normalizeIp, restoreManualDevices, savedDevicesKey, type ManualDevice } from '@/lib/manual-devices';
 import { checkLatestRelease, releasePage } from '@/lib/updates';
 import { version } from '../package.json';
@@ -17,6 +19,7 @@ type InventoryResponse = { shared?: boolean; devices?: ManualDevice[]; info?: Re
 
 export default function Home() {
   const [query, setQuery] = useState('');
+  const [view, setView] = useState('devices');
   const [deviceList, setDeviceList] = useState<ManualDevice[]>([]);
   const [nodeInfo, setNodeInfo] = useState<Record<string, NodeInfo>>({});
   const [pollBusy, setPollBusy] = useState(false);
@@ -25,6 +28,7 @@ export default function Home() {
   const [addOpen, setAddOpen] = useState(false);
   const [newIp, setNewIp] = useState('');
   const [newName, setNewName] = useState('');
+  const [newType, setNewType] = useState<'Console' | 'Node' | 'Switch'>('Node');
   const [addError, setAddError] = useState('');
   const [storageError, setStorageError] = useState('');
   const [serverUrl, setServerUrl] = useState('');
@@ -120,7 +124,7 @@ export default function Home() {
     if (deviceList.some(device => device.ip === ip)) { setAddError('That IP address is already in the server device list.'); return; }
     setAdding(true);
     try {
-      await inventoryRequest('/api/devices', { name: newName, ip });
+      await inventoryRequest('/api/devices', { name: newName, ip, deviceType: newType });
       setQuery(''); setNewIp(''); setNewName(''); setAddError(''); setAddOpen(false);
     } catch (error) { setAddError(error instanceof Error ? error.message : 'The device could not be saved on the server.'); }
     finally { setAdding(false); }
@@ -155,27 +159,27 @@ export default function Home() {
     </header>
 
     <div className="mx-auto max-w-[1600px] p-4 lg:p-7">
-      <Tabs defaultValue="overview">
+      <Tabs value={view} onValueChange={value => { if (value) setView(value); }}>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
       <TabsList aria-label="Dashboard views" className="shrink-0 bg-[#1b252c] text-slate-100">
-        <TabsTrigger value="overview" className="px-4 text-slate-300 data-active:bg-teal-300/15 data-active:text-teal-200">Overview</TabsTrigger>
+        <TabsTrigger value="devices" className="px-4 text-slate-300 data-active:bg-teal-300/15 data-active:text-teal-200">Devices</TabsTrigger>
         <TabsTrigger value="signals" className="px-4 text-slate-300 data-active:bg-teal-300/15 data-active:text-teal-200">Network</TabsTrigger>
       </TabsList>
-            <div className="flex w-full flex-wrap items-center gap-2 md:w-auto"><div className="relative min-w-[180px] flex-1 md:w-60"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16}/><Input aria-label="Search devices" value={query} onChange={event => setQuery(event.target.value)} placeholder="Search name or IP…" className="border-white/10 bg-white/[.04] pl-9"/></div>
+            {view === 'devices' && <div className="flex w-full flex-wrap items-center gap-2 md:w-auto"><div className="relative min-w-[180px] flex-1 md:w-60"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16}/><Input aria-label="Search devices" value={query} onChange={event => setQuery(event.target.value)} placeholder="Search name or IP…" className="border-white/10 bg-white/[.04] pl-9"/></div>
               <Dialog open={addOpen} onOpenChange={open => { setAddOpen(open); if (!open) setAddError(''); }}>
                 <DialogTrigger render={<Button className="shrink-0 bg-teal-300 text-slate-950 hover:bg-teal-200" />}><Plus size={15}/> Add by IP</DialogTrigger>
                 <DialogContent className="border border-white/10 bg-[#171d22] text-slate-100 sm:max-w-md"><form onSubmit={addDevice}>
                   <DialogHeader><DialogTitle>Add device by IP</DialogTitle><DialogDescription className="text-slate-400">Save this device on the server so every connected browser can see it. The server polls its web/API interface.</DialogDescription></DialogHeader>
-                  <div className="space-y-4 py-5"><div className="space-y-2"><label htmlFor="device-name">Device name (optional)</label><Input id="device-name" value={newName} onChange={event => setNewName(event.target.value)} className="border-white/10 bg-black/15"/></div><div className="space-y-2"><label htmlFor="device-ip">IPv4 address</label><Input id="device-ip" value={newIp} onChange={event => { setNewIp(event.target.value); setAddError(''); }} inputMode="decimal" autoFocus className="border-white/10 bg-black/15 font-mono" aria-invalid={Boolean(addError)} aria-describedby={addError ? 'device-ip-error' : undefined}/>{addError && <p id="device-ip-error" role="alert" className="text-sm text-rose-300">{addError}</p>}</div></div>
+                  <div className="space-y-4 py-5"><div className="space-y-2"><label id="device-type-label">Device type</label><Select value={newType} onValueChange={value => { if (value) setNewType(value as typeof newType); }}><SelectTrigger aria-labelledby="device-type-label" className="w-full border-white/10"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="Console">Console</SelectItem><SelectItem value="Node">Node</SelectItem><SelectItem value="Switch">Switch</SelectItem></SelectContent></Select></div><div className="space-y-2"><label htmlFor="device-name">Device name (optional)</label><Input id="device-name" value={newName} onChange={event => setNewName(event.target.value)} className="border-white/10 bg-black/15"/></div><div className="space-y-2"><label htmlFor="device-ip">IPv4 address</label><Input id="device-ip" value={newIp} onChange={event => { setNewIp(event.target.value); setAddError(''); }} inputMode="decimal" autoFocus className="border-white/10 bg-black/15 font-mono" aria-invalid={Boolean(addError)} aria-describedby={addError ? 'device-ip-error' : undefined}/>{addError && <p id="device-ip-error" role="alert" className="text-sm text-rose-300">{addError}</p>}</div></div>
                   <DialogFooter className="border-white/10 bg-transparent"><DialogClose render={<Button type="button" variant="outline" />}>Cancel</DialogClose><Button type="submit" disabled={adding} className="bg-teal-300 text-slate-950 hover:bg-teal-200">{adding ? 'Saving…' : 'Add device'}</Button></DialogFooter>
                 </form></DialogContent>
               </Dialog>
               <Button onClick={refreshNodes} disabled={pollBusy || !deviceList.length} className="shrink-0 bg-teal-300 text-slate-950 hover:bg-teal-200"><RefreshCw size={16} className={pollBusy ? 'animate-spin' : ''}/>{pollBusy ? 'Polling nodes…' : 'Poll Nodes'}</Button>
-            </div>
+            </div>}
       </div>
-      <TabsContent value="overview">
+      <TabsContent value="devices">
         {storageError && <p role="alert" className="mb-4 text-sm text-amber-200">{storageError}</p>}
-        <DeviceCards devices={deviceList} query={query} info={nodeInfo} pollingIp={pollingIp} />
+        <Tabs defaultValue="Node" className="gap-4"><TabsList aria-label="Device type" className="bg-[#1b252c] text-slate-100"><TabsTrigger value="Console" className="px-5">Consoles</TabsTrigger><TabsTrigger value="Node" className="px-5">Nodes</TabsTrigger><TabsTrigger value="Switch" className="px-5">Switches</TabsTrigger></TabsList><TabsContent value="Console"><ConsoleCards devices={deviceList} query={query} info={nodeInfo} pollingIp={pollingIp}/></TabsContent>{(['Node','Switch'] as const).map(type => <TabsContent key={type} value={type}><DeviceCards devices={deviceList} query={query} info={nodeInfo} pollingIp={pollingIp} deviceType={type}/></TabsContent>)}</Tabs>
       </TabsContent>
       <TabsContent value="signals"><SignalMonitor /></TabsContent>
       </Tabs>
