@@ -29,6 +29,11 @@ test('packaged server skips occupied ports and serves dashboard, assets and actu
     assert.equal(signals.available, true);
     assert.equal(signals.protocols.sACN.status, 'listening');
     assert.deepEqual(signals.signals, []);
+    const transmitter = await fetch(lan.url + '/api/transmitter').then(res => res.json());
+    assert.equal(transmitter.available, true); assert.equal(transmitter.enabled, false);
+    const configured = await fetch(lan.url + '/api/transmitter', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({protocol:'sACN',universe:22,channel:7,value:99,setChannel:true}) }).then(res => res.json());
+    assert.equal(configured.enabled, false); assert.equal(configured.currentValue, 99); assert.equal(configured.universe, 22);
+    assert.equal((await fetch(lan.url + '/api/transmitter', { method:'POST', headers:{Origin:'https://other.example','Content-Type':'application/json'}, body:'{}' })).status,403);
     const channelUrl = lan.url + '/api/signals/channel?protocol=Art-Net&universe=0&channel=512';
     const channelReading = await fetch(channelUrl).then(res => res.json());
     assert.equal(channelReading.channel, 512);

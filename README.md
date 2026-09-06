@@ -61,6 +61,12 @@ No demo streams or lighting output are generated. Multiple browsers share the sa
 
 Peak packets/s is the highest five-second-average rate observed per protocol since this server started. It is tracked on packet receipt, even without a browser open, survives browser refreshes and signal loss, and resets when the server restarts.
 
+### Transmitter
+
+The **Network → Transmit** tab generates one 512-channel sACN or Art-Net universe from the local server. Transmission is stopped by default. Select the protocol, universe, channel and DMX value (0–255), then use **Set channel**. **Set entire universe to 50%** writes DMX 128 to channels 1–512. Changes are sent immediately while enabled at approximately 30 packets per second.
+
+sACN uses standard universe multicast; Art-Net uses limited broadcast from the server. Generated output may control connected lighting equipment. Confirm the selected universe before enabling it, and stop the transmitter when testing is complete. The hosted website cannot transmit to the LAN.
+
 - sACN multicast defaults to universes **1–64** on local IPv4 adapters. Select up to 256 universes with `LNA_SACN_UNIVERSES`, e.g. `1-64,101-110`. Set `LNA_INTERFACE` to a local adapter IPv4 address to restrict multicast subscriptions. Restart after changing adapters/settings. Membership failures are displayed.
 - Art-Net listens for broadcast and unicast ArtDmx reaching the host; its universe addresses are displayed **0-based**. sACN universes are 1-based. Unicast sACN addressed to the server is also accepted, regardless of multicast subscriptions.
 - Presence expires after 3 seconds without a valid non-preview DMX packet. History expires after 5 minutes. Source-terminated sACN streams are marked ended immediately. Preview, alternate start codes (including priority-only packets), synchronization and discovery packets are excluded from DMX presence. This is a traffic monitor, not a console merge/output engine.

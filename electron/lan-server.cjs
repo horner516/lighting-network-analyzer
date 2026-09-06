@@ -3,6 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { networkInterfaces } = require('node:os');
 const { createSignalListener } = require('./signal-listener.cjs');
+const { createSignalTransmitter } = require('./signal-transmitter.cjs');
 const { createDevicePoller } = require('./netron-api.cjs');
 const { createDeviceInventory } = require('./device-inventory.cjs');
 const { validTarget } = require('./node-poller.cjs');
@@ -22,7 +23,7 @@ async function startLanServer({ root, preferredPort = 47652, host = '0.0.0.0', l
   if (!Number.isInteger(preferredPort) || preferredPort < 1024 || preferredPort > 65535) throw new Error('Server port must be an integer from 1024 to 65535.');
   const base = path.resolve(root);
   if (!fs.existsSync(path.join(base, 'index.html'))) throw new Error('The bundled dashboard is missing. Reinstall the app.');
-  let listener;
+  let listener, transmitter;
   const checkRelease = createReleaseChecker(version, releaseRequest);
   const devicePoller = createDevicePoller();
   const inventory = createDeviceInventory({ file: deviceStorePath, poll: pollDevice || (ip => devicePoller.poll(ip)), intervalMs: inventoryIntervalMs });
@@ -33,7 +34,7 @@ async function startLanServer({ root, preferredPort = 47652, host = '0.0.0.0', l
     try { pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname); }
     catch { res.writeHead(400); res.end(); return; }
     const foreignOrigin = req.headers['sec-fetch-site'] === 'cross-site' || (req.headers.origin && req.headers.origin !== `http://${req.headers.host}`);
-    if (req.method === 'POST' && ['/api/devices', '/api/devices/refresh', '/api/devices/layout'].includes(pathname)) {
+    if (req.method === 'POST' && ['/api/devices', '/api/devices/refresh', '/api/devices/layout', '/api/transmitter'].includes(pathname)) {
       res.setHeader('Content-Type', 'application/json');
       if (foreignOrigin) { res.writeHead(403); res.end('{}'); return; }
       if (!/^application\/json(?:;|$)/i.test(req.headers['content-type'] || '')) { res.writeHead(415); res.end('{}'); return; }
@@ -43,6 +44,7 @@ async function startLanServer({ root, preferredPort = 47652, host = '0.0.0.0', l
         if (oversized) { res.writeHead(413); res.end('{}'); return; }
         try {
           const body = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
+          if (pathname === '/api/transmitter') { res.end(JSON.stringify(transmitter.update(body))); return; }
           if (pathname === '/api/devices') inventory.add(body.devices || [body], { legacyImport: body.legacyImport === true });
           else if (pathname === '/api/devices/layout') inventory.layout(body);
           else void inventory.refresh();
@@ -72,6 +74,11 @@ async function startLanServer({ root, preferredPort = 47652, host = '0.0.0.0', l
     if (pathname === '/api/signals') {
       res.setHeader('Content-Type', 'application/json');
       res.end(req.method === 'HEAD' ? undefined : JSON.stringify(listener ? listener.snapshot() : { available: false }));
+      return;
+    }
+    if (pathname === '/api/transmitter') {
+      res.setHeader('Content-Type', 'application/json');
+      res.end(req.method === 'HEAD' ? undefined : JSON.stringify(transmitter ? transmitter.snapshot() : { available: false }));
       return;
     }
     if (pathname === '/api/devices/poll') {
@@ -125,9 +132,10 @@ async function startLanServer({ root, preferredPort = 47652, host = '0.0.0.0', l
       });
       const localHost = host === '0.0.0.0' ? '127.0.0.1' : host === '::' ? '[::1]' : host.includes(':') ? `[${host}]` : host;
       listener = createSignalListener(listenerOptions);
+      transmitter = createSignalTransmitter();
       await listener.ready;
       inventory.start();
-      server.on('close', () => { inventory.close(); listener.close(); });
+      server.on('close', () => { inventory.close(); listener.close(); transmitter.close(); });
       return { server, port, url: `http://${localHost}:${port}`, info: () => addresses(port, host) };
     } catch (error) {
       if (error.code !== 'EADDRINUSE') throw error;

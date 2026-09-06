@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Added separate Receiver and Transmit tabs on Network. The local server can generate one 512-channel sACN or Art-Net universe, set individual channel values, set all channels to 50% (DMX 128), and starts with transmission disabled.
+
 ## 0.1.7 — 2026-09-03
 
 - Dashboard update checks now run on the server against GitHub's latest stable release, compare the installed server version, and open the trusted download page when newer. Offline/rate-limit errors and a fallback download link remain visible.
