@@ -22,11 +22,13 @@ See [all releases and checksums](https://github.com/horner516/lighting-network-a
 
 **Signing status:** installers are unsigned and the Mac app is not notarized. Your operating system may show an unknown-publisher warning. On Mac, open the disk image, drag the app to Applications, then approve it in System Settings → Privacy & Security if required by your system. Follow your organization's software policy.
 
-**Device monitoring:** Lux Link reads ProPlex IQ Two web-monitor status and NETRON web API configuration, with physical port cards. Devices are organized into Console, Nodes and Switches tabs. The first console integration recognizes an MA Web Remote and correlates active DMX streams by source IP. Add by IP saves a device and requests its available identity and port information. No simulated devices are included. A status reply is not a continuous health check. See the [changelog](CHANGELOG.md).
+**Device monitoring:** Lux Link reads ProPlex IQ Two web-monitor status and NETRON web API configuration, with physical port cards. Devices are organized into Console, Nodes and Switches tabs. The Mac console integration reads session, show-file and status text from the MA Web Remote Network view and correlates active DMX streams by source IP. Add by IP saves a device and requests its available identity and port information. No simulated devices are included. See the [changelog](CHANGELOG.md).
 
 ## Device cards and polling
 
-Saved devices are polled through their live web/API interface when the server starts and when added. A single server-owned polling cycle continues even without a browser open, with 15 seconds between completed sequential cycles. **Poll Nodes** requests an immediate refresh; simultaneous requests share the same cycle. Browsers read cached snapshots rather than polling devices themselves. Art-Net remains a receive-only traffic source on Network, not a source for device configuration.
+Saved nodes and switches are polled through their live web/API interface when the server starts and when added. A single server-owned polling cycle continues even without a browser open, with 15 seconds between completed sequential cycles. **Poll Nodes** beside the Nodes heading requests an immediate node refresh. Consoles are polled once when added and only on demand afterward with **Poll Consoles** beside the Consoles heading. The global **Poll All Devices** button refreshes consoles, nodes and switches in one shared sequential cycle. Simultaneous requests are deduplicated; browsers only read cached snapshots. Art-Net remains a receive-only traffic source on Network, not a source for device configuration.
+
+If every supported web/API request fails, Lux Link runs four ICMP ping attempts one second apart. A reply shows **Device online** while explaining that device data is unavailable; four failed replies show **Device offline**. A web/API response also counts as online. Ping is used only as the fallback reachability check and does not provide configuration or prove lighting-data flow.
 
 ProPlex 16-port cards use two rows of eight; NETRON EN12 uses one row of twelve. Six-port ProPlex cards use two rows of three and eight-port cards use one row. Click a port for read-only details.
 
@@ -50,13 +52,15 @@ If the web monitor is unreachable or its format is unsupported, current configur
 
 ### grandMA console foundation
 
-Add a grandMA station as type **Console**. Lux Link identifies a reachable MA Web Remote on TCP 8080, then lists active sACN and Art-Net universes observed with that console's source IP. Received sACN priority is shown per universe. The verified Web Remote landing page does not publish the console's MA session name or session membership state, so those fields remain **Not reported** instead of being guessed. MA-Net3 session-packet decoding is not included.
+Add a grandMA station as type **Console**. Lux Link identifies its MA Web Remote on TCP 8080. In the packaged Mac app, a small helper uses the system WebKit and Vision frameworks to open the Remote user's Network view and read its visible Session, Show File and Status fields. It does not bundle Chromium, submit configuration, or decode proprietary MA-Net3 packets. Web Remote must be enabled, the default Remote user must be permitted to connect, and the station must have an available Web Remote connection slot. If recognition fails, the fields remain **Not reported** with the reason shown instead of being guessed.
+
+The Web Remote is queried when the console is first added and when **Poll Consoles** is pressed; it is not part of the recurring 15-second node cycle. Opening the Network view changes only that Web Remote user's displayed window. Lux Link also lists active sACN and Art-Net universes observed with the console's source IP, including received sACN priority.
 
 Polling requires the updated local LAN app. The hosted website cannot send Art-Net packets onto your LAN. Supported target addresses are private LAN hosts and the lighting convention of 2.x addresses. Only explicitly added IPs are queried; this is not a subnet scanner.
 
 ## Live sACN / Art-Net signals
 
-The Mac host and `start:lan` server listen on UDP 5568 (sACN) and 6454 (Art-Net). The **Network** tab contains protocol presence, active universes, current and peak packets/s, source name/IP, native universe number, slot count, sACN priority, and last seen. Devices are organized on the **Devices** page.
+The Mac host and `start:lan` server listen on UDP 5568 (sACN) and 6454 (Art-Net). The **Network** tab groups streams by source IP and summarizes sequential addresses, for example `sACN · 1–64`. Select one universe to expand its current rate, slots, priority, packet count, first 16 levels and last-seen state directly below that universe; selecting another stream closes the previous detail. Devices are organized on the **Devices** page.
 
 In Network, choose sACN or Art-Net, enter a universe and a channel (1–512), then click **Display current value**. The viewer refreshes every 0.5 seconds and shows the latest received DMX value (0–255) and percentage, separately for each source. Zero is a valid reading; missing channels, timed-out streams, and ended sources show no current value. Changing the fields takes effect when you press the button. sACN multicast universes must be in the host's configured subscription range; Art-Net uses native 0-based universe numbers. Stop viewing pauses channel polling.
 

@@ -1,0 +1,34 @@
+#import <AppKit/AppKit.h>
+#import <Vision/Vision.h>
+#import <WebKit/WebKit.h>
+
+@interface MAReader : NSObject <WKNavigationDelegate>
+@property NSString *ip; @property WKWebView *webView; @property NSWindow *window; @property BOOL finished;
+- (instancetype)initWithIP:(NSString *)ip; - (void)start;
+@end
+
+@implementation MAReader
+- (instancetype)initWithIP:(NSString *)ip { if ((self = [super init])) _ip = ip; return self; }
+- (void)start {
+  WKWebViewConfiguration *config = [WKWebViewConfiguration new]; config.websiteDataStore = WKWebsiteDataStore.nonPersistentDataStore;
+  self.webView = [[WKWebView alloc] initWithFrame:NSMakeRect(0,0,1280,720) configuration:config]; self.webView.navigationDelegate = self;
+  self.window = [[NSWindow alloc] initWithContentRect:self.webView.frame styleMask:NSWindowStyleMaskBorderless backing:NSBackingStoreBuffered defer:NO]; self.window.contentView = self.webView; self.window.alphaValue = 0; [self.window orderOut:nil];
+  NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"http://%@:8080/",self.ip]]; [self.webView loadRequest:[NSURLRequest requestWithURL:url cachePolicy:NSURLRequestReloadIgnoringLocalCacheData timeoutInterval:5]];
+  dispatch_after(dispatch_time(DISPATCH_TIME_NOW,10*NSEC_PER_SEC),dispatch_get_main_queue(),^{ [self complete:@{@"error":@"MA Web Remote metadata timed out."}]; });
+}
+- (void)webView:(WKWebView *)webView didFailNavigation:(WKNavigation *)navigation withError:(NSError *)error { [self complete:@{@"error":error.localizedDescription ?: @"Web Remote failed."}]; }
+- (void)webView:(WKWebView *)webView didFailProvisionalNavigation:(WKNavigation *)navigation withError:(NSError *)error { [self complete:@{@"error":error.localizedDescription ?: @"Web Remote failed."}]; }
+- (void)webView:(WKWebView *)webView didFinishNavigation:(WKNavigation *)navigation { dispatch_after(dispatch_time(DISPATCH_TIME_NOW,3*NSEC_PER_SEC),dispatch_get_main_queue(),^{ [self prepareNetworkView]; }); }
+- (void)snapshot:(void (^)(CGImageRef))completion { WKSnapshotConfiguration *config=[WKSnapshotConfiguration new]; config.rect=self.webView.bounds; [self.webView takeSnapshotWithConfiguration:config completionHandler:^(NSImage *image,NSError *error){ completion(image ? [image CGImageForProposedRect:NULL context:nil hints:nil] : NULL); }]; }
+- (NSString *)textInImage:(CGImageRef)image normalized:(CGRect)rect {
+  if(!image)return nil; CGRect crop=CGRectIntegral(CGRectMake(rect.origin.x*CGImageGetWidth(image),rect.origin.y*CGImageGetHeight(image),rect.size.width*CGImageGetWidth(image),rect.size.height*CGImageGetHeight(image))); CGImageRef cropped=CGImageCreateWithImageInRect(image,crop); if(!cropped)return nil;
+  VNRecognizeTextRequest *request=[VNRecognizeTextRequest new]; request.recognitionLevel=VNRequestTextRecognitionLevelAccurate; request.usesLanguageCorrection=YES; request.recognitionLanguages=@[@"en-US"]; NSError *error=nil; [[[VNImageRequestHandler alloc]initWithCGImage:cropped options:@{}]performRequests:@[request] error:&error]; CGImageRelease(cropped); if(error)return nil;
+  NSMutableArray *lines=[NSMutableArray array]; for(VNRecognizedTextObservation *observation in request.results ?: @[]){ VNRecognizedText *candidate=[observation topCandidates:1].firstObject; if(candidate.string.length)[lines addObject:candidate.string]; } return lines.count ? [lines componentsJoinedByString:@" "] : nil;
+}
+- (NSString *)clean:(NSString *)value labels:(NSArray *)labels { if(!value.length)return nil; for(NSString *label in labels)if([value rangeOfString:label options:NSCaseInsensitiveSearch|NSAnchoredSearch].location!=NSNotFound)value=[value substringFromIndex:label.length]; value=[value stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@" \t\r\n:|-"]]; return value.length ? [value substringToIndex:MIN(value.length,128)] : nil; }
+- (void)prepareNetworkView { [self snapshot:^(CGImageRef image){ NSString *heading=[self textInImage:image normalized:CGRectMake(.03,0,.35,.11)] ?: @""; if([heading rangeOfString:@"Network" options:NSCaseInsensitiveSearch].location!=NSNotFound){[self readMetadata];return;} NSString *script=@"if(window.customVars&&window.customVars.receivingVideo&&typeof send==='function'){send({requestType:'mouseEvent',posX:1153,posY:695,eventType:'mouseDown',button:0});send({requestType:'mouseEvent',posX:1153,posY:695,eventType:'mouseUp',button:0});true}else{false}"; [self.webView evaluateJavaScript:script completionHandler:^(id value,NSError *error){ if(![value boolValue]){[self complete:@{@"error":@"Web Remote connected without a readable screen."}];return;} dispatch_after(dispatch_time(DISPATCH_TIME_NOW,1500*NSEC_PER_MSEC),dispatch_get_main_queue(),^{[self readMetadata];}); }]; }]; }
+- (void)readMetadata { [self snapshot:^(CGImageRef image){ NSString *heading=[self textInImage:image normalized:CGRectMake(.03,0,.35,.11)] ?: @""; if([heading rangeOfString:@"Network" options:NSCaseInsensitiveSearch].location==NSNotFound){[self complete:@{@"error":@"The Web Remote Network view did not open."}];return;} NSString *session=[self clean:[self textInImage:image normalized:CGRectMake(.55,.16,.18,.14)] labels:@[@"Session"]]; NSString *show=[self clean:[self textInImage:image normalized:CGRectMake(.79,.16,.20,.14)] labels:@[@"Show File",@"Show",@"File"]]; NSString *status=[self clean:[self textInImage:image normalized:CGRectMake(.83,0,.14,.08)] labels:@[@"Status"]]; if(!session.length&&!show.length){[self complete:@{@"error":@"Session and show file were not readable in the Network view."}];return;} NSMutableDictionary *result=[NSMutableDictionary dictionary]; if(session)result[@"sessionName"]=session;if(show)result[@"showFile"]=show;if(status)result[@"sessionStatus"]=status;[self complete:result]; }]; }
+- (void)complete:(NSDictionary *)result { if(self.finished)return;self.finished=YES;NSData *data=[NSJSONSerialization dataWithJSONObject:result options:0 error:nil];[[NSFileHandle fileHandleWithStandardOutput] writeData:data ?: [@"{\"error\":\"Metadata reader failed.\"}" dataUsingEncoding:NSUTF8StringEncoding]];[[NSFileHandle fileHandleWithStandardOutput] writeData:[@"\n" dataUsingEncoding:NSUTF8StringEncoding]];[NSApp terminate:nil]; }
+@end
+
+int main(int argc,const char *argv[]){@autoreleasepool{if(argc!=2){puts("{\"error\":\"Use a private lighting-network IPv4 address.\"}");return 2;}NSString *ip=[NSString stringWithUTF8String:argv[1]];NSRegularExpression *regex=[NSRegularExpression regularExpressionWithPattern:@"^(?:10|2|192\\.168|172\\.(?:1[6-9]|2\\d|3[01]))(?:\\.\\d{1,3}){2}$" options:0 error:nil];if([regex numberOfMatchesInString:ip options:0 range:NSMakeRange(0,ip.length)]!=1){puts("{\"error\":\"Use a private lighting-network IPv4 address.\"}");return 2;}NSApplication *app=NSApplication.sharedApplication;[app setActivationPolicy:NSApplicationActivationPolicyProhibited];MAReader *reader=[[MAReader alloc]initWithIP:ip];[reader start];[app run];}return 0;}

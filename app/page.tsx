@@ -81,8 +81,13 @@ export default function Home() {
     return () => { controller.abort(); clearTimeout(timer); };
   }, []);
 
-  async function refreshNodes() {
-    try { await inventoryRequest('/api/devices/refresh', {}); }
+  async function refreshDevices(deviceType: 'Console' | 'Node' | 'Switch') {
+    try { await inventoryRequest('/api/devices/refresh', { deviceType }); }
+    catch (error) { setStorageError(error instanceof Error ? error.message : 'Unable to refresh devices.'); }
+  }
+
+  async function refreshAllDevices() {
+    try { await inventoryRequest('/api/devices/refresh', { all: true }); }
     catch (error) { setStorageError(error instanceof Error ? error.message : 'Unable to refresh devices.'); }
   }
 
@@ -174,12 +179,12 @@ export default function Home() {
                   <DialogFooter className="border-white/10 bg-transparent"><DialogClose render={<Button type="button" variant="outline" />}>Cancel</DialogClose><Button type="submit" disabled={adding} className="bg-teal-300 text-slate-950 hover:bg-teal-200">{adding ? 'Saving…' : 'Add device'}</Button></DialogFooter>
                 </form></DialogContent>
               </Dialog>
-              <Button onClick={refreshNodes} disabled={pollBusy || !deviceList.length} className="shrink-0 bg-teal-300 text-slate-950 hover:bg-teal-200"><RefreshCw size={16} className={pollBusy ? 'animate-spin' : ''}/>{pollBusy ? 'Polling nodes…' : 'Poll Nodes'}</Button>
+              <Button onClick={refreshAllDevices} disabled={pollBusy || !deviceList.length} className="shrink-0 bg-teal-300 text-slate-950 hover:bg-teal-200"><RefreshCw size={16} className={pollBusy ? 'animate-spin' : ''}/>{pollBusy ? 'Polling devices…' : 'Poll All Devices'}</Button>
             </div>}
       </div>
       <TabsContent value="devices">
         {storageError && <p role="alert" className="mb-4 text-sm text-amber-200">{storageError}</p>}
-        <Tabs defaultValue="Node" className="gap-4"><TabsList aria-label="Device type" className="bg-[#1b252c] text-slate-100"><TabsTrigger value="Console" className="px-5">Consoles</TabsTrigger><TabsTrigger value="Node" className="px-5">Nodes</TabsTrigger><TabsTrigger value="Switch" className="px-5">Switches</TabsTrigger></TabsList><TabsContent value="Console"><ConsoleCards devices={deviceList} query={query} info={nodeInfo} pollingIp={pollingIp}/></TabsContent>{(['Node','Switch'] as const).map(type => <TabsContent key={type} value={type}><DeviceCards devices={deviceList} query={query} info={nodeInfo} pollingIp={pollingIp} deviceType={type}/></TabsContent>)}</Tabs>
+        <Tabs defaultValue="Node" className="gap-4"><TabsList aria-label="Device type" className="bg-[#1b252c] text-slate-100"><TabsTrigger value="Console" className="px-5">Consoles</TabsTrigger><TabsTrigger value="Node" className="px-5">Nodes</TabsTrigger><TabsTrigger value="Switch" className="px-5">Switches</TabsTrigger></TabsList><TabsContent value="Console"><ConsoleCards devices={deviceList} query={query} info={nodeInfo} pollingIp={pollingIp} pollBusy={pollBusy} onPoll={() => refreshDevices('Console')}/></TabsContent>{(['Node','Switch'] as const).map(type => <TabsContent key={type} value={type}><DeviceCards devices={deviceList} query={query} info={nodeInfo} pollingIp={pollingIp} deviceType={type} pollBusy={pollBusy} onPoll={type === 'Node' ? () => refreshDevices('Node') : undefined}/></TabsContent>)}</Tabs>
       </TabsContent>
       <TabsContent value="signals"><SignalMonitor /></TabsContent>
       </Tabs>

@@ -32,10 +32,23 @@ test('reads only known status resources, caches polls, and retains identity on p
   await poller.poll('10.0.26.108'); assert.equal(calls.length, 4);
   assert.deepEqual(calls, ['/Setting.json', '/index.json', '/IP.json', '/DMXPorts.json']);
 });
+
+test('uses four-attempt reachability result after every supported web/API poll fails', async () => {
+  let pings = 0;
+  const poller = createDevicePoller({
+    read: async () => { throw Error('Not NETRON'); },
+    proplexPoll: async () => { throw Error('Not ProPlex'); },
+    maPoll: async () => { throw Error('Not MA'); },
+    ping: async ip => { pings++; assert.equal(ip, '10.0.26.109'); return true; },
+  });
+  const result = await poller.poll('10.0.26.109');
+  assert.equal(pings, 1); assert.equal(result.responding, false); assert.equal(result.online, true); assert.equal(result.reachabilitySource, 'ping');
+  assert.match(result.error, /answered ping/);
+});
 test('unsupported devices report unavailable without Art-Net discovery; invalid targets are rejected', async () => {
-  const poller = createDevicePoller({ read: async () => ({}), proplexPoll: async () => { throw Error('Not ProPlex'); }, artnetPoll: async () => { throw Error('Art-Net must not be queried'); } });
+  const poller = createDevicePoller({ read: async () => ({}), proplexPoll: async () => { throw Error('Not ProPlex'); }, maPoll: async () => { throw Error('Not MA'); }, ping: async () => false });
   const d = await poller.poll('10.0.26.105');
-  assert.equal(d.responding, false); assert.deepEqual(d.ports, []); assert.match(d.error, /web\/API polling failed/);
+  assert.equal(d.responding, false); assert.equal(d.online, false); assert.deepEqual(d.ports, []); assert.match(d.error, /four ping attempts failed/);
   await assert.rejects(poller.poll('127.0.0.1'), RangeError);
   await assert.rejects(readJson('10.0.26.108', '/write'), /Unsupported/);
 });

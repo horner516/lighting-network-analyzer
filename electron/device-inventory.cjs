@@ -12,7 +12,7 @@ function deviceEntry(value) {
 }
 
 function createDeviceInventory({ file = null, poll, intervalMs = 15000 }) {
-  let devices = [], info = {}, pollingIp = '', running = null, timer, stopped = false, storageError = '', legacyImportClosed = false;
+  let devices = [], info = {}, pollingIp = '', running = null, runningTargets = new Set(), timer, stopped = false, storageError = '', legacyImportClosed = false;
   if (file && fs.existsSync(file)) {
     try {
       if (fs.statSync(file).size > 131072) throw Error('Too large');
@@ -35,21 +35,27 @@ function createDeviceInventory({ file = null, poll, intervalMs = 15000 }) {
     legacyImportClosed = closeLegacyImport;
   }
   function snapshot() { return { shared: true, devices: devices.map(d => ({ ...d })), info: { ...info }, busy: Boolean(running), pollingIp, error: storageError }; }
-  function refresh() {
-    if (stopped || running) return running || Promise.resolve();
+  function refresh({ deviceType = '', ips = null, all = false } = {}) {
+    if (stopped) return Promise.resolve();
+    const targets = devices.filter(device => all || (Array.isArray(ips) ? ips.includes(device.ip) : deviceType ? device.deviceType === deviceType : device.deviceType !== 'Console')).map(device => device.ip);
+    if (running) {
+      const missing = targets.filter(ip => !runningTargets.has(ip));
+      return missing.length ? running.then(() => refresh({ ips: missing })) : running;
+    }
     clearTimeout(timer);
+    runningTargets = new Set(targets);
     // Set running before the first physical request so concurrent browsers share one cycle.
     running = Promise.resolve().then(async () => {
       const visited = new Set();
       while (!stopped) {
-        const device = devices.find(d => !visited.has(d.ip));
+        const device = devices.find(d => !visited.has(d.ip) && runningTargets.has(d.ip));
         if (!device) break;
         visited.add(device.ip); pollingIp = device.ip;
         try { const result = await poll(device.ip); if (devices.includes(device)) info[device.ip] = result; }
         catch { if (devices.includes(device)) info[device.ip] = { ip: device.ip, checkedAt: Date.now(), responding: false, ports: [], firmwareCode: null, error: 'Device polling failed.' }; }
       }
     }).finally(() => {
-      running = null; pollingIp = '';
+      running = null; runningTargets = new Set(); pollingIp = '';
       if (!stopped) { timer = setTimeout(refresh, intervalMs); timer.unref?.(); }
     });
     return running;
@@ -57,10 +63,10 @@ function createDeviceInventory({ file = null, poll, intervalMs = 15000 }) {
   function add(entries, { legacyImport = false } = {}) {
     if (legacyImport && legacyImportClosed) return snapshot();
     if (!Array.isArray(entries) || !entries.length || entries.length > 256) throw new RangeError('Supply between 1 and 256 devices.');
-    const next = [...devices];
-    for (const entry of entries.map(deviceEntry)) if (!next.some(d => d.ip === entry.ip)) next.push(entry);
+    const next = [...devices], added = [];
+    for (const entry of entries.map(deviceEntry)) if (!next.some(d => d.ip === entry.ip)) { next.push(entry); added.push(entry.ip); }
     if (next.length > 256) throw new RangeError('The server supports up to 256 configured devices.');
-    if (next.length !== devices.length) { persist(next); void refresh(); }
+    if (next.length !== devices.length) { persist(next); void refresh({ ips: added }); }
     return snapshot();
   }
   function layout({ baseOrder, order } = {}) {

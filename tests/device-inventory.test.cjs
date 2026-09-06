@@ -39,6 +39,22 @@ test('server polls without browsers and does not keep stale results after failur
   } finally { inventory.close(); }
 });
 
+test('background cycles skip consoles while add and explicit console polls include them', async () => {
+  const calls = [];
+  const inventory = createDeviceInventory({ intervalMs: 10000, poll: async ip => { calls.push(ip); return { ip, responding: true, online: true, ports: [] }; } });
+  try {
+    inventory.add([{ ip: '192.168.1.101', deviceType: 'Node' }, { ip: '192.168.1.11', deviceType: 'Console' }]);
+    await inventory.refresh({ ips: ['192.168.1.101', '192.168.1.11'] });
+    assert.deepEqual(calls, ['192.168.1.101', '192.168.1.11']);
+    await inventory.refresh();
+    assert.deepEqual(calls, ['192.168.1.101', '192.168.1.11', '192.168.1.101']);
+    await inventory.refresh({ deviceType: 'Console' });
+    assert.deepEqual(calls, ['192.168.1.101', '192.168.1.11', '192.168.1.101', '192.168.1.11']);
+    await inventory.refresh({ all: true });
+    assert.deepEqual(calls.slice(-2), ['192.168.1.101', '192.168.1.11']);
+  } finally { inventory.close(); }
+});
+
 test('unreadable saved inventory is preserved rather than overwritten', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lux-inventory-corrupt-'));
   const file = path.join(dir, 'devices.json'); fs.writeFileSync(file, 'not valid JSON');

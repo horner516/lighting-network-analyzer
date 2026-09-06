@@ -1,17 +1,25 @@
 'use client';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import type { ManualDevice } from '@/lib/manual-devices';
 import { portAppearance } from '@/lib/port-appearance';
 
 type Port = { index: number; label: string; direction: string; inputAddress: number | null; outputAddress: number | null; inputProtocol: string | null; outputProtocol: string | null; active: boolean | null; rdm: boolean | null; error: string | null; displayUniverse?: number | null; addressNote?: string; frameRate?: number | null; mergeMode?: string; channelFrom?: number | null; channelTo?: number | null; channelOffset?: number | null };
-export type NodeInfo = { ip: string; checkedAt: number; responding: boolean; name: string; description: string; source: string; report: string; subnetMask: string | null; firmwareCode: number | null; firmware?: string; uptime?: string; mac: string; proplex: boolean; ports: Port[]; note: string; error: string };
+export type NodeInfo = { ip: string; checkedAt: number; responding: boolean; online?: boolean; reachabilitySource?: 'web' | 'ping' | 'none'; name: string; description: string; source: string; report: string; subnetMask: string | null; firmwareCode: number | null; firmware?: string; uptime?: string; mac: string; proplex: boolean; ports: Port[]; note: string; error: string; sessionName?: string | null; showFile?: string | null; sessionStatus?: string | null; metadataStatus?: string };
 
-export function DeviceCards({ devices, query, info, pollingIp, deviceType = 'Node' }: { devices: ManualDevice[]; query: string; info: Record<string, NodeInfo>; pollingIp: string; deviceType?: ManualDevice['deviceType'] }) {
+export function DeviceOnlineBadge({ node, polling }: { node?: NodeInfo; polling: boolean }) {
+  const online = node?.online ?? node?.responding;
+  const text = polling ? 'Checking device…' : !node ? 'Status pending' : online ? 'Device online' : 'Device offline';
+  const style = !node || polling ? 'border-white/15 bg-white/5 text-slate-300' : online ? 'border-emerald-300/35 bg-emerald-300/10 text-emerald-200' : 'border-rose-300/35 bg-rose-300/10 text-rose-200';
+  return <output className={`inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium ${style}`}><span className={`size-2 rounded-full ${!node || polling ? 'bg-slate-400' : online ? 'bg-emerald-300' : 'bg-rose-300'}`}/>{text}</output>;
+}
+
+export function DeviceCards({ devices, query, info, pollingIp, deviceType = 'Node', pollBusy = false, onPoll }: { devices: ManualDevice[]; query: string; info: Record<string, NodeInfo>; pollingIp: string; deviceType?: ManualDevice['deviceType']; pollBusy?: boolean; onPoll?: () => Promise<void> }) {
   const typed = devices.filter(device => device.deviceType === deviceType);
   const visible = typed.filter(device => `${device.name} ${device.ip} ${info[device.ip]?.description || ''}`.toLowerCase().includes(query.toLowerCase()));
   return <div className="space-y-4">
-    <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="font-semibold">{deviceType === 'Switch' ? 'Switches' : `${deviceType}s`} <span className="text-slate-400">{typed.length}</span></h2><p className="text-sm text-slate-400">Server-managed polling · shared by every browser</p></div></div>
+    <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="font-semibold">{deviceType === 'Switch' ? 'Switches' : `${deviceType}s`} <span className="text-slate-400">{typed.length}</span></h2><p className="text-sm text-slate-400">Server-managed polling · shared by every browser</p></div>{onPoll && <Button onClick={() => void onPoll()} disabled={pollBusy || !typed.length} className="bg-teal-300 text-slate-950 hover:bg-teal-200"><RefreshCw size={16} className={pollBusy ? 'animate-spin' : ''}/>{pollBusy ? 'Polling…' : deviceType === 'Switch' ? 'Poll Switches' : 'Poll Nodes'}</Button>}</div>
     {!visible.length && <p className="rounded-lg border border-white/10 p-8 text-center text-slate-400">{typed.length ? 'No matching devices.' : `Add a ${deviceType.toLowerCase()} by IP to begin monitoring.`}</p>}
     {visible.map(device => {
       const node = info[device.ip];
@@ -21,7 +29,7 @@ export function DeviceCards({ devices, query, info, pollingIp, deviceType = 'Nod
       const portWidth = en12 ? 80 : 100;
       const name = node?.description || node?.name || device.name;
       return <section key={device.ip} aria-label={name} className="overflow-hidden rounded-xl border border-white/15 bg-[#171d22]">
-        <div className="flex flex-wrap items-start justify-between gap-4 p-4"><div><h3 className="text-xl font-semibold">{name}</h3>{device.name !== name && !device.name.startsWith('Device ') && <p className="mt-1 text-sm text-slate-400">{device.name}</p>}<div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-sm"><span><span className="text-slate-400">IP </span><a href={`http://${device.ip}/`} target="_blank" rel="noreferrer" className="font-mono text-teal-200 underline">{device.ip}</a></span><span><span className="text-slate-400">Subnet mask </span><span className="font-mono">{node?.subnetMask || 'Not reported'}</span></span></div></div><span className={`rounded-md border px-3 py-1 text-sm ${node?.responding ? 'border-teal-300/30 text-teal-200' : 'border-white/10 text-slate-400'}`}>{pollingIp === device.ip ? 'Polling…' : node?.responding ? 'Web/API responding' : node ? 'Polling unavailable' : 'Not polled'}</span></div>
+        <div className="flex flex-wrap items-start justify-between gap-4 p-4"><div><h3 className="text-xl font-semibold">{name}</h3>{device.name !== name && !device.name.startsWith('Device ') && <p className="mt-1 text-sm text-slate-400">{device.name}</p>}<div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-sm"><span><span className="text-slate-400">IP </span><a href={`http://${device.ip}/`} target="_blank" rel="noreferrer" className="font-mono text-teal-200 underline">{device.ip}</a></span><span><span className="text-slate-400">Subnet mask </span><span className="font-mono">{node?.subnetMask || 'Not reported'}</span></span></div></div><div className="flex flex-col items-end gap-2"><DeviceOnlineBadge node={node} polling={pollingIp === device.ip}/>{node && !node.responding && node.online && <span className="text-xs text-slate-400">Ping responding · device data unavailable</span>}</div></div>
         {ports.length > 0 && <><div className="border-t border-white/10 px-4 py-2 text-sm text-slate-400">{ports.length} reported ports · select a port for details</div><div className="overflow-x-auto px-4 pb-4"><div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${columns}, minmax(${portWidth}px, 1fr))`, minWidth: columns * (portWidth + 8) }}>
           {ports.map(port => {
             const address = port.displayUniverse ?? port.outputAddress ?? port.inputAddress;

@@ -21,4 +21,7 @@ test('native installer is arm64-only and omits Electron packaging', () => {
   assert.equal(packageJson.devDependencies.electron, undefined);
   assert.equal(packageJson.devDependencies['electron-builder'], undefined);
   assert.equal(packageJson.dependencies['electron-updater'], undefined);
+  assert.match(script, /MAWebRemoteReader\.m/);
+  assert.match(script, /-framework Vision -framework WebKit/);
+  assert.doesNotMatch(script, /Chromium|puppeteer|playwright/i);
 });

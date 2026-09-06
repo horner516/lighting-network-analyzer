@@ -47,10 +47,10 @@ test('poller uses ProPlex web status and reports unavailable without Art-Net fal
   const expected=normalizeProplex('10.0.26.106',fixture());
   const p=createDevicePoller({read:async()=>{throw Error('Not NETRON');},proplexPoll:async()=>expected,artnetPoll:async()=>{throw Error('Should not poll Art-Net');}});
   assert.equal(await p.poll('10.0.26.106'),expected);
-  const fallback=createDevicePoller({read:async()=>({}),proplexPoll:async()=>{throw Error('Timeout');},artnetPoll:async()=>{throw Error('Art-Net must not be queried');}});
+  const fallback=createDevicePoller({read:async()=>({}),proplexPoll:async()=>{throw Error('Timeout');},maPoll:async()=>{throw Error('Not MA');},ping:async()=>false});
   const missing = await fallback.poll('10.0.26.106');
   assert.equal(missing.responding, false); assert.deepEqual(missing.ports, []);
-  assert.match(missing.error,/web\/API polling failed/);
+  assert.match(missing.error,/four ping attempts failed/);
   await assert.rejects(readStatus('127.0.0.1'),RangeError);
 });
 

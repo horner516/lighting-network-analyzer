@@ -63,7 +63,10 @@ async function startLanServer({ root, preferredPort = 47652, host = '0.0.0.0', l
           if (pathname === '/api/network-interface') { await selectNetworkInterface(body.address); res.end(JSON.stringify(networkSnapshot())); return; }
           if (pathname === '/api/devices') inventory.add(body.devices || [body], { legacyImport: body.legacyImport === true });
           else if (pathname === '/api/devices/layout') inventory.layout(body);
-          else void inventory.refresh();
+          else {
+            if (body.deviceType && !['Console', 'Node', 'Switch'].includes(body.deviceType)) throw new RangeError('Choose a valid device type to poll.');
+            void inventory.refresh({ deviceType: body.deviceType || '', all: body.all === true });
+          }
           res.end(JSON.stringify(inventory.snapshot()));
         } catch (error) { res.writeHead(error.statusCode === 409 ? 409 : error instanceof RangeError || error instanceof SyntaxError ? 400 : 503); res.end(JSON.stringify({ error: error.message })); }
       });

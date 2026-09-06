@@ -82,7 +82,7 @@ function normalizeProplex(ip, html, setupHtml) {
   const warnings = [];
   if (ports.some(p => p.direction === 'Unknown')) warnings.push('Some port settings were not reported.');
   if (!decimal) warnings.push('Universe display format is unsupported; select Decimal on the device to read universe numbers.');
-  return { ip, checkedAt: Date.now(), responding: true, source: 'ProPlex web monitor', proplex: true,
+  return { ip, checkedAt: Date.now(), responding: true, online: true, reachabilitySource: 'web', source: 'ProPlex web monitor', proplex: true,
     protocolSource: settings ? 'protocol_setup.htm' : 'status.htm', protocolSettings: settings,
     name: text(html.match(/<b>\s*Node Name\s*<\/b>([\s\S]*?)<\/td>/i)?.[1]) || model,
     description: model, subnetMask, firmware: field('Master'), firmwareCode: null, mac: field('MAC Address'), ports,

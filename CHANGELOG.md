@@ -1,9 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- Added grandMA Web Remote screen reading in the native Mac app. Lux Link opens the Remote user's Network view and uses macOS text recognition to read the console's session name, show file and session status. Verified live against `192.168.1.11` as session `LITE_4`, show file `Exe summit patch`, status `IdleMaster`.
+- Console Web Remote polling runs once when a console is added and only on demand afterward. Dedicated **Poll Consoles** and **Poll Nodes** controls sit beside their corresponding section headings, while the global **Poll All Devices** control refreshes consoles, nodes and switches together.
+- Added explicit Device online/offline badges. After every supported web/API probe fails, the server sends four pings one second apart; a ping reply distinguishes an online device with unavailable polling data from an offline device.
+- Simplified Network receiver streams by source device. Sequential universes collapse into ranges such as `sACN · 1–64`; selecting a universe opens its live detail immediately below it and closes any previously selected stream.
+
 ## 0.2.1 — 2026-09-06
 
 - Renamed Overview to **Devices** and added Console, Nodes and Switches views. Device type is stored in the server-owned inventory and shared by every browser.
-- Added initial grandMA console integration. Lux Link recognizes the MA Web Remote on TCP 8080 and correlates active sACN/Art-Net streams by source IP. It does not infer a session name or membership state that the published Web Remote page does not expose.
+- Added initial grandMA console integration. Lux Link recognizes the MA Web Remote on TCP 8080 and correlates active sACN/Art-Net streams by source IP.
 - Added a Network connection selector for the server's active IPv4 adapters. Changing adapters safely stops transmission and restarts both listeners on the selected address.
 - Added separate Receiver and Transmit tabs on Network. The local server can generate one 512-channel sACN or Art-Net universe, set individual channel values, set all channels to 50% (DMX 128), and starts with transmission disabled.
 - Added configurable sACN output priority from 0–200. Received sACN stream priority remains visible per source and universe.

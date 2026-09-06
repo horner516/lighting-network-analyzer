@@ -33,6 +33,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         process.arguments = [resources.appendingPathComponent("server.cjs").path, resources.appendingPathComponent("dashboard").path]
         var environment = ProcessInfo.processInfo.environment
         environment["LNA_SERVER_INFO"] = infoFile.path
+        environment["LNA_MA_READER"] = resources.appendingPathComponent("MA Web Remote Reader.app/Contents/MacOS/MA Web Remote Reader").path
         process.environment = environment
         let log = Pipe(); process.standardOutput = log; process.standardError = log
         process.terminationHandler = { [weak self] task in DispatchQueue.main.async {

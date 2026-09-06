@@ -2,6 +2,7 @@ const http = require('node:http');
 const { validTarget } = require('./node-poller.cjs');
 const { pollProplex } = require('./proplex-web.cjs');
 const { pollMaConsole } = require('./ma-console.cjs');
+const { createReachabilityProbe } = require('./reachability.cjs');
 
 // Read endpoints used by the NETRON EN12 V2.9.2 web monitor. Never call
 // configuration, cue, firmware or other write endpoints.
@@ -57,7 +58,7 @@ function normalizeNetron(ip, settings, identity, network, rawPorts, warnings = [
       channelFrom: num(p.ptRangeFrom), channelTo: num(p.ptRangeTo), channelOffset: num(p.ptOffsetAddr),
     };
   }) : [];
-  return { ip, checkedAt: Date.now(), responding: true, source: 'NETRON web API',
+  return { ip, checkedAt: Date.now(), responding: true, online: true, reachabilitySource: 'web', source: 'NETRON web API',
     name: str(settings.DeviceName), description: str(settings.DeviceType), proplex: false,
     subnetMask: normalizeIp(network?.netmask), reportedIp: normalizeIp(network?.ipaddress),
     firmware: str(identity?.FirmwareVer), firmwareCode: null, mac: str(identity?.MACAddress), uptime: str(identity?.OnTime),
@@ -67,16 +68,17 @@ function normalizeNetron(ip, settings, identity, network, rawPorts, warnings = [
   };
 }
 
-function createDevicePoller({ read = readJson, proplexPoll = pollProplex, now = Date.now } = {}) {
+function createDevicePoller({ read = readJson, proplexPoll = pollProplex, maPoll = pollMaConsole, ping = createReachabilityProbe(), now = Date.now } = {}) {
   const pending = new Map(), cache = new Map();
   async function fallback(ip) {
     try { return await proplexPoll(ip); }
     catch {
-      try { return await pollMaConsole(ip); } catch {}
-      return { ip, checkedAt: now(), responding: false, source: 'Device web/API polling', name: '', description: '',
+      try { return await maPoll(ip); } catch {}
+      const online = await ping(ip).catch(() => false);
+      return { ip, checkedAt: now(), responding: false, online, reachabilitySource: online ? 'ping' : 'none', source: 'Device web/API polling', name: '', description: '',
         proplex: false, ports: [], subnetMask: null, firmwareCode: null, mac: '', report: '',
         note: 'Device information comes only from its live web/API response, not Art-Net discovery.',
-        error: 'Device web/API polling failed or the device format is unsupported. No current configuration is available.' };
+        error: online ? 'Device answered ping, but its web/API format is unavailable or unsupported.' : 'Device web/API polling and four ping attempts failed.' };
     }
   }
   async function collect(ip) {
