@@ -1,6 +1,7 @@
 const http = require('node:http');
 const { validTarget } = require('./node-poller.cjs');
 const { pollProplex } = require('./proplex-web.cjs');
+const { pollMaConsole } = require('./ma-console.cjs');
 
 // Read endpoints used by the NETRON EN12 V2.9.2 web monitor. Never call
 // configuration, cue, firmware or other write endpoints.
@@ -71,6 +72,7 @@ function createDevicePoller({ read = readJson, proplexPoll = pollProplex, now = 
   async function fallback(ip) {
     try { return await proplexPoll(ip); }
     catch {
+      try { return await pollMaConsole(ip); } catch {}
       return { ip, checkedAt: now(), responding: false, source: 'Device web/API polling', name: '', description: '',
         proplex: false, ports: [], subnetMask: null, firmwareCode: null, mac: '', report: '',
         note: 'Device information comes only from its live web/API response, not Art-Net discovery.',

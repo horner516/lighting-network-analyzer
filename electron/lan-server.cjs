@@ -23,10 +23,25 @@ async function startLanServer({ root, preferredPort = 47652, host = '0.0.0.0', l
   if (!Number.isInteger(preferredPort) || preferredPort < 1024 || preferredPort > 65535) throw new Error('Server port must be an integer from 1024 to 65535.');
   const base = path.resolve(root);
   if (!fs.existsSync(path.join(base, 'index.html'))) throw new Error('The bundled dashboard is missing. Reinstall the app.');
-  let listener, transmitter;
+  let listener, transmitter, selectedInterface = listenerOptions.interfaceIp || process.env.LNA_INTERFACE || '';
   const checkRelease = createReleaseChecker(version, releaseRequest);
   const devicePoller = createDevicePoller();
   const inventory = createDeviceInventory({ file: deviceStorePath, poll: pollDevice || (ip => devicePoller.poll(ip)), intervalMs: inventoryIntervalMs });
+  function availableInterfaces() {
+    return Object.entries(networkInterfaces()).flatMap(([name, list]) => (list || []).filter(item => item.family === 'IPv4' && !item.internal).map(item => ({ name, address: item.address })));
+  }
+  function networkSnapshot() { return { available: true, selected: selectedInterface, interfaces: availableInterfaces(), transmitterEnabled: transmitter?.snapshot().enabled === true }; }
+  async function startNetworking(address) {
+    listener?.close(); transmitter?.close();
+    selectedInterface = address;
+    listener = createSignalListener({ ...listenerOptions, interfaceIp: address, ...(address ? { bindAddress: address } : {}) });
+    transmitter = createSignalTransmitter({ interfaceIp: address });
+    await listener.ready;
+  }
+  async function selectNetworkInterface(address) {
+    if (typeof address !== 'string' || (address && !availableInterfaces().some(item => item.address === address))) throw new RangeError('Choose an active network connection.');
+    if (address !== selectedInterface) await startNetworking(address);
+  }
   const server = http.createServer((req, res) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Cache-Control', 'no-store');
@@ -34,17 +49,18 @@ async function startLanServer({ root, preferredPort = 47652, host = '0.0.0.0', l
     try { pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname); }
     catch { res.writeHead(400); res.end(); return; }
     const foreignOrigin = req.headers['sec-fetch-site'] === 'cross-site' || (req.headers.origin && req.headers.origin !== `http://${req.headers.host}`);
-    if (req.method === 'POST' && ['/api/devices', '/api/devices/refresh', '/api/devices/layout', '/api/transmitter'].includes(pathname)) {
+    if (req.method === 'POST' && ['/api/devices', '/api/devices/refresh', '/api/devices/layout', '/api/transmitter', '/api/network-interface'].includes(pathname)) {
       res.setHeader('Content-Type', 'application/json');
       if (foreignOrigin) { res.writeHead(403); res.end('{}'); return; }
       if (!/^application\/json(?:;|$)/i.test(req.headers['content-type'] || '')) { res.writeHead(415); res.end('{}'); return; }
       let size = 0, oversized = false; const chunks = [];
       req.on('data', chunk => { size += chunk.length; if (size > 65536) oversized = true; else chunks.push(chunk); });
-      req.on('end', () => {
+      req.on('end', async () => {
         if (oversized) { res.writeHead(413); res.end('{}'); return; }
         try {
           const body = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
           if (pathname === '/api/transmitter') { res.end(JSON.stringify(transmitter.update(body))); return; }
+          if (pathname === '/api/network-interface') { await selectNetworkInterface(body.address); res.end(JSON.stringify(networkSnapshot())); return; }
           if (pathname === '/api/devices') inventory.add(body.devices || [body], { legacyImport: body.legacyImport === true });
           else if (pathname === '/api/devices/layout') inventory.layout(body);
           else void inventory.refresh();
@@ -79,6 +95,11 @@ async function startLanServer({ root, preferredPort = 47652, host = '0.0.0.0', l
     if (pathname === '/api/transmitter') {
       res.setHeader('Content-Type', 'application/json');
       res.end(req.method === 'HEAD' ? undefined : JSON.stringify(transmitter ? transmitter.snapshot() : { available: false }));
+      return;
+    }
+    if (pathname === '/api/network-interface') {
+      res.setHeader('Content-Type', 'application/json');
+      res.end(req.method === 'HEAD' ? undefined : JSON.stringify(networkSnapshot()));
       return;
     }
     if (pathname === '/api/devices/poll') {
@@ -131,9 +152,7 @@ async function startLanServer({ root, preferredPort = 47652, host = '0.0.0.0', l
         server.listen({ port, host, exclusive: true });
       });
       const localHost = host === '0.0.0.0' ? '127.0.0.1' : host === '::' ? '[::1]' : host.includes(':') ? `[${host}]` : host;
-      listener = createSignalListener(listenerOptions);
-      transmitter = createSignalTransmitter();
-      await listener.ready;
+      await startNetworking(selectedInterface);
       inventory.start();
       server.on('close', () => { inventory.close(); listener.close(); transmitter.close(); });
       return { server, port, url: `http://${localHost}:${port}`, info: () => addresses(port, host) };
@@ -143,5 +162,6 @@ async function startLanServer({ root, preferredPort = 47652, host = '0.0.0.0', l
   }
   throw new Error('No available server port was found. Set NETWORK_ANALYZER_PORT to another port.');
 }
+
 
 module.exports = { startLanServer };

@@ -1,8 +1,15 @@
 # Changelog
 
-## Unreleased
+## 0.2.1 — 2026-09-06
 
+- Renamed Overview to **Devices** and added Console, Nodes and Switches views. Device type is stored in the server-owned inventory and shared by every browser.
+- Added initial grandMA console integration. Lux Link recognizes the MA Web Remote on TCP 8080 and correlates active sACN/Art-Net streams by source IP. It does not infer a session name or membership state that the published Web Remote page does not expose.
+- Added a Network connection selector for the server's active IPv4 adapters. Changing adapters safely stops transmission and restarts both listeners on the selected address.
 - Added separate Receiver and Transmit tabs on Network. The local server can generate one 512-channel sACN or Art-Net universe, set individual channel values, set all channels to 50% (DMX 128), and starts with transmission disabled.
+- Added configurable sACN output priority from 0–200. Received sACN stream priority remains visible per source and universe.
+- Replaced the Electron Mac host with a native Swift menu-bar host plus a bundled Apple-silicon Node runtime. The application retains LAN serving, UDP I/O, shared inventory and GitHub update checks without bundling Chromium.
+- Mac release output is Apple silicon only. The compressed v0.2.1 DMG is approximately 43 MB; Windows and Intel Mac packages are not built for this release.
+- Added a Mac packaged-server startup check and live verification with a ProPlex IQ Two 1616 at `192.168.1.101` and an MA Web Remote at `192.168.1.11`.
 
 ## 0.1.7 — 2026-09-03
 

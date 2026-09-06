@@ -2,8 +2,8 @@
   "name": "lighting-network-analyzer",
   "description": "Lux Link lighting network dashboard and LAN server",
   "author": "Brandon Horner",
-  "main": "electron/main.cjs",
-  "version": "0.1.7",
+  "main": "scripts/native-server.cjs",
+  "version": "0.2.1",
   "private": true,
   "engines": {
     "node": ">=22.13.0"
@@ -13,16 +13,15 @@
     "start:lan": "pnpm run desktop:web && node scripts/start-lan.mjs",
     "build": "vinext build",
     "start": "wrangler dev --config dist/server/wrangler.json",
-    "desktop": "pnpm run desktop:web && node scripts/run-desktop.mjs",
+    "desktop": "pnpm run desktop:web && node scripts/start-lan.mjs",
     "desktop:web": "vite build --config desktop/vite.config.ts",
-    "desktop:build": "pnpm run desktop:web && electron-builder --config electron-builder.json",
-    "desktop:test": "node --test tests/desktop-server.test.cjs tests/manual-devices.test.mjs tests/updates.test.mjs tests/signals.test.cjs tests/signal-transmitter.test.cjs tests/node-poller.test.cjs tests/netron-api.test.cjs tests/proplex-web.test.cjs tests/device-inventory.test.cjs tests/tray-host.test.cjs tests/port-appearance.test.mjs tests/device-layout.test.mjs",
+    "desktop:build": "pnpm run mac:native",
+    "mac:native": "zsh scripts/build-mac-native.sh",
+    "desktop:test": "node --test tests/desktop-server.test.cjs tests/manual-devices.test.mjs tests/updates.test.mjs tests/signals.test.cjs tests/signal-transmitter.test.cjs tests/node-poller.test.cjs tests/netron-api.test.cjs tests/proplex-web.test.cjs tests/device-inventory.test.cjs tests/ma-console.test.cjs tests/native-host.test.cjs tests/port-appearance.test.mjs tests/device-layout.test.mjs",
     "lint": "oxlint",
     "format": "oxfmt"
   },
-  "dependencies": {
-    "electron-updater": "6.8.9"
-  },
+  "dependencies": {},
   "devDependencies": {
     "react": "19.2.6",
     "react-dom": "19.2.6",
@@ -55,11 +54,9 @@
     "oxfmt": "0.61.0",
     "oxlint": "1.76.0",
     "oxlint-tsgolint": "7.0.2001",
-    "electron": "44.1.1",
     "tailwindcss": "4.2.1",
     "typescript": "5.9.3",
     "vite": "8.0.13",
-    "electron-builder": "26.15.3",
     "wrangler": "4.92.0"
   },
   "type": "module"

@@ -31,6 +31,9 @@ test('packaged server skips occupied ports and serves dashboard, assets and actu
     assert.deepEqual(signals.signals, []);
     const transmitter = await fetch(lan.url + '/api/transmitter').then(res => res.json());
     assert.equal(transmitter.available, true); assert.equal(transmitter.enabled, false);
+    const network = await fetch(lan.url + '/api/network-interface').then(res => res.json());
+    assert.equal(network.available, true); assert.equal(network.selected, ''); assert.ok(Array.isArray(network.interfaces));
+    assert.equal((await fetch(lan.url + '/api/network-interface', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({address:'192.0.2.99'}) })).status, 400);
     const configured = await fetch(lan.url + '/api/transmitter', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({protocol:'sACN',universe:22,channel:7,value:99,setChannel:true}) }).then(res => res.json());
     assert.equal(configured.enabled, false); assert.equal(configured.currentValue, 99); assert.equal(configured.universe, 22);
     assert.equal((await fetch(lan.url + '/api/transmitter', { method:'POST', headers:{Origin:'https://other.example','Content-Type':'application/json'}, body:'{}' })).status,403);

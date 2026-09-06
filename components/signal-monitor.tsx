@@ -4,9 +4,11 @@ import { Radio } from 'lucide-react';
 import { ChannelViewer } from '@/components/channel-viewer';
 import { SignalTransmitter } from '@/components/signal-transmitter';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 type Signal = { id: string; protocol: string; universe: number; ip: string; cid: string; sourceName: string; priority: number | null; status: string; lastSeen: number; rate: number; packets: number; slots: number; nonzero: number; previewLevels: number[] };
 type Snapshot = { available: boolean; sampledAt: number; universeSpec: string; droppedSources: number; protocols: Record<string, { port: number; status: string; error: string; received: number; ignored: number; peakRate: number }>; memberships: { name: string; address: string; joined: number; failed: number; error: string }[]; signals: Signal[] };
+type NetworkSelection = { available: boolean; selected: string; interfaces: { name: string; address: string }[]; transmitterEnabled: boolean };
 
 function Receiver({ compact = false }: { compact?: boolean }) {
   const [data, setData] = useState<Snapshot | null>(null);
@@ -58,5 +60,37 @@ function Receiver({ compact = false }: { compact?: boolean }) {
 
 export function SignalMonitor({ compact = false }: { compact?: boolean }) {
   if (compact) return <Receiver compact/>;
-  return <Tabs defaultValue="receiver" className="gap-4"><TabsList aria-label="Network mode" className="bg-[#1b252c] text-slate-100"><TabsTrigger value="receiver" className="px-5 text-slate-300 data-active:bg-teal-300/15 data-active:text-teal-200">Receiver</TabsTrigger><TabsTrigger value="transmit" className="px-5 text-slate-300 data-active:bg-teal-300/15 data-active:text-teal-200">Transmit</TabsTrigger></TabsList><TabsContent value="receiver"><Receiver/></TabsContent><TabsContent value="transmit"><SignalTransmitter/></TabsContent></Tabs>;
+  return <NetworkWorkspace/>;
+}
+
+function NetworkWorkspace() {
+  const [network, setNetwork] = useState<NetworkSelection | null>(null);
+  const [changing, setChanging] = useState(false);
+  const [message, setMessage] = useState('');
+  const [revision, setRevision] = useState(0);
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch('/api/network-interface', { cache: 'no-store', signal: controller.signal }).then(response => {
+      if (!response.ok) throw Error(); return response.json() as Promise<NetworkSelection>;
+    }).then(setNetwork).catch(() => setNetwork(null));
+    return () => controller.abort();
+  }, []);
+  async function select(address: string) {
+    setChanging(true); setMessage('Changing network connection…');
+    try {
+      const response = await fetch('/api/network-interface', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ address: address === 'all' ? '' : address }) });
+      const result = await response.json() as NetworkSelection & { error?: string };
+      if (!response.ok) throw Error(result.error || 'Unable to select that connection.');
+      setNetwork(result); setRevision(value => value + 1);
+      setMessage(`Receiver restarted on ${result.selected || 'all active connections'}. Transmit output remains off.`);
+    } catch (error) { setMessage(error instanceof Error ? error.message : 'Unable to select that connection.'); }
+    finally { setChanging(false); }
+  }
+  return <div className="space-y-4">
+    <section className="flex flex-wrap items-end justify-between gap-4 rounded-lg border border-white/10 bg-[#171d22] p-4">
+      <div><label className="text-sm text-slate-400">Network connection</label><Select value={network?.selected || 'all'} onValueChange={value => { if (value) void select(value); }} disabled={!network || changing}><SelectTrigger className="mt-2 w-[min(28rem,80vw)] border-white/10 bg-black/15"><SelectValue placeholder="Select a network connection"/></SelectTrigger><SelectContent><SelectItem value="all">All active connections</SelectItem>{network?.interfaces.map(item => <SelectItem key={`${item.name}-${item.address}`} value={item.address}>{item.name} · {item.address}</SelectItem>)}</SelectContent></Select></div>
+      <div className="max-w-xl text-sm text-slate-400"><p>{network ? 'This connection is used for both DMX receiving and transmitting.' : 'Connection selection is available in the local Lux Link app.'}</p>{message && <p role="status" className="mt-1 text-amber-200">{message}</p>}</div>
+    </section>
+    <Tabs defaultValue="receiver" className="gap-4"><TabsList aria-label="Network mode" className="bg-[#1b252c] text-slate-100"><TabsTrigger value="receiver" className="px-5 text-slate-300 data-active:bg-teal-300/15 data-active:text-teal-200">Receiver</TabsTrigger><TabsTrigger value="transmit" className="px-5 text-slate-300 data-active:bg-teal-300/15 data-active:text-teal-200">Transmit</TabsTrigger></TabsList><TabsContent value="receiver"><Receiver key={`rx-${revision}`}/></TabsContent><TabsContent value="transmit"><SignalTransmitter key={`tx-${revision}`}/></TabsContent></Tabs>
+  </div>;
 }

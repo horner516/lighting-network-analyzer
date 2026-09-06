@@ -10,15 +10,15 @@ function harness() {
 }
 
 test('validates protocol, universe, channel and DMX value limits', () => {
-  assert.deepEqual(validated({protocol:'sACN',universe:1,channel:512,value:255}), {protocol:'sACN',universe:1,channel:512,value:255});
-  assert.deepEqual(validated({protocol:'Art-Net',universe:0,channel:1,value:0}), {protocol:'Art-Net',universe:0,channel:1,value:0});
-  for (const input of [{protocol:'bad',universe:1,channel:1,value:1},{protocol:'sACN',universe:0,channel:1,value:1},{protocol:'Art-Net',universe:32768,channel:1,value:1},{protocol:'sACN',universe:1,channel:513,value:1},{protocol:'sACN',universe:1,channel:1,value:256}]) assert.throws(() => validated(input), RangeError);
+  assert.deepEqual(validated({protocol:'sACN',universe:1,channel:512,value:255,priority:175}), {protocol:'sACN',universe:1,channel:512,value:255,priority:175});
+  assert.deepEqual(validated({protocol:'Art-Net',universe:0,channel:1,value:0}), {protocol:'Art-Net',universe:0,channel:1,value:0,priority:100});
+  for (const input of [{protocol:'bad',universe:1,channel:1,value:1},{protocol:'sACN',universe:0,channel:1,value:1},{protocol:'Art-Net',universe:32768,channel:1,value:1},{protocol:'sACN',universe:1,channel:513,value:1},{protocol:'sACN',universe:1,channel:1,value:256},{protocol:'sACN',universe:1,channel:1,value:1,priority:201}]) assert.throws(() => validated(input), RangeError);
 });
 
 test('frames decode as 512-channel sACN and Art-Net DMX', () => {
   const levels = Buffer.alloc(512); levels[0] = 128; levels[511] = 255;
-  const sacn = decodeSacn(sacnFrame(123, levels, 4, Buffer.alloc(16, 1)));
-  assert.equal(sacn.universe,123); assert.equal(sacn.slots,512); assert.equal(sacn.levels[0],128); assert.equal(sacn.levels[511],255); assert.equal(sacn.sourceName,'Lux Link Transmitter');
+  const sacn = decodeSacn(sacnFrame(123, levels, 4, Buffer.alloc(16, 1), 175));
+  assert.equal(sacn.universe,123); assert.equal(sacn.slots,512); assert.equal(sacn.levels[0],128); assert.equal(sacn.levels[511],255); assert.equal(sacn.sourceName,'Lux Link Transmitter'); assert.equal(sacn.priority,175);
   const artnet = decodeArtNet(artNetFrame(12, levels, 5));
   assert.equal(artnet.universe,12); assert.equal(artnet.slots,512); assert.equal(artnet.levels[0],128); assert.equal(artnet.levels[511],255);
 });

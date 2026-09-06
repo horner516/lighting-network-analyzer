@@ -20,5 +20,6 @@ test('legacy manual entries survive without fabricated health or telemetry; samp
 test('manual entries cannot acquire a measured health state and IPs are normalized', () => {
   assert.equal(normalizeIp(' 010.002.3.004 '), '10.2.3.4');
   assert.equal(normalizeIp('10.2.-1.4'), null);
-  assert.deepEqual(manualDevice('', '10.2.3.4'), { name:'Device 10.2.3.4', ip:'10.2.3.4', source:'manual', state:'Unverified' });
+  assert.deepEqual(manualDevice('', '10.2.3.4'), { name:'Device 10.2.3.4', ip:'10.2.3.4', source:'manual', state:'Unverified', deviceType:'Node' });
+  assert.equal(manualDevice('MA', '10.2.3.5', 'Console').deviceType, 'Console');
 });

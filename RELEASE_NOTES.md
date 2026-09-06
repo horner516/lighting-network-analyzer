@@ -1,20 +1,13 @@
-## v0.1.7 — Lux Link shared inventory and tray host
+## v0.2.1 — Lux Link devices, console foundation and native Mac host
 
-- Fixed the dashboard update button: the server checks GitHub against its installed version and the browser opens downloads when a newer stable release exists. A visible download link handles popup blocking.
-- One server-owned device list is shared by every browser and saved across restarts. A single sequential polling cycle continues in the background, even without a dashboard open.
-- New header **Layout** editor: drag device IPs into order, delete devices, undo draft deletions, and save or cancel. Saved changes apply to all viewers. Stale edits are rejected, and deleted devices cannot return through late poll replies or subsequent automatic legacy imports.
-- ProPlex protocol selection now comes from read-only `protocol_setup.htm` controls, with status-page fallback. Verified sACN-only and dual Art-Net/sACN configurations.
-- Mac starts in the menu bar without a Dock window; Windows starts in the system tray. Choose **Open Browser** to view the dashboard. Update checks and Quit remain available.
-- Removed redundant headings and configuration messages. Search, Add by IP and Poll Nodes now align with Overview/Network in a responsive toolbar.
-- Green sACN, blue Art-Net and teal dual-mode port accents. Output glow requires explicit reported activity; configuration alone is not evidence of live output or health.
-- Existing NETRON API support, physical port cards, sACN/Art-Net listeners, live channel values, peak packet rates and update checks remain available.
+- **Devices replaces Overview**, with separate Console, Nodes and Switches tabs. The selected type belongs to the shared server inventory, so every browser sees the same organization.
+- **grandMA foundation:** consoles are identified through MA Web Remote on TCP 8080. Console cards show active sACN and Art-Net universes observed from that console IP, including received sACN priority. MA session name and membership are shown as not reported because the verified Web Remote landing page does not expose them.
+- **Network adapter selection:** choose the local IPv4 connection used for both receive and transmit. Switching connections stops any active transmitter and restarts the listeners safely.
+- **Transmit controls:** send one sACN or Art-Net universe, set a single channel, set all 512 values to 50% (DMX 128), and select sACN priority from 0–200. Output remains disabled on startup.
+- **Smaller Mac app:** Electron and its bundled Chromium engine have been removed from the release. A native Swift menu-bar host runs the same local LAN server using a bundled Apple-silicon Node runtime. The resulting DMG is approximately 43 MB while retaining device polling, UDP I/O, shared browser access and update checks.
 
-**Upgrade note:** browser-local device entries import when that browser first opens the updated LAN server. Entries in the old desktop window's separate profile may need to be added again by IP. Saving a layout closes automatic legacy imports to prevent deleted entries from returning; manual Add by IP remains available.
+This release contains one unsigned, non-notarized **macOS Apple silicon** installer. Windows and Intel Mac installers are not produced for v0.2.1. Quit the previous Lux Link app before installing, then drag Lux Link to Applications. If macOS blocks first launch, approve it in System Settings → Privacy & Security according to your organization’s policy.
 
-**LAN access:** run one host and open its displayed IP/port from other devices. Preferred TCP port 47652 automatically moves when occupied. Allow the dashboard port and UDP 5568/6454 on trusted networks. The dashboard has no login: do not expose it to the internet. The hosted website cannot poll LAN nodes or receive lighting UDP; use the local app.
+Live read-only verification was completed against the ProPlex node at `192.168.1.101` (IQ Two 1616 2X, 16 ports) and the grandMA console at `192.168.1.11` (MA Web Remote responding on port 8080).
 
-Download the Windows x64 EXE or universal Mac DMG (Apple silicon and Intel). Both include the LAN server; no developer tools are required. Quit the previous app before installing. Installers are unsigned and the Mac app is not notarized; follow your organization's software policy. Windows updates can install after confirmation; Mac updates open GitHub for manual installation.
-
-Automated tests and packaged startup checks run on both platforms before publication. SHA256SUMS.txt contains installer checksums.
-
-See the [changelog](https://github.com/horner516/lighting-network-analyzer/blob/v0.1.7/CHANGELOG.md).
+See the [changelog](https://github.com/horner516/lighting-network-analyzer/blob/v0.2.1/CHANGELOG.md).

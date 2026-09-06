@@ -4,26 +4,25 @@ Standalone desktop and web dashboard for monitoring lighting network devices (sA
 
 ## Downloads
 
-**Version 0.1.7:** shared server-side device inventory, a single background polling cycle, menu-bar/system-tray-only startup, improved ProPlex protocol detection, and a compact dashboard toolbar.
+**Version 0.2.1:** Devices/Console/Nodes/Switches views, selectable network connection, sACN transmit priority, initial grandMA Web Remote detection, and a much smaller native Apple-silicon menu-bar app.
 
 The header **Layout** button opens an IP-address list. Drag the grips (mouse or touch), or use the arrow controls, to arrange dashboard cards. Delete marks a device for removal; **Undo deletions** or **Cancel** can reverse draft changes. **Save layout** applies the order and removals server-wide. Removed nodes stop being polled and may be added again by IP. Concurrent edits are rejected if the server list changed while the editor was open. After the first saved layout, automatic imports from legacy browser lists are disabled to prevent deleted devices from reappearing.
 
-In version 0.1.7, all browsers opening the same LAN server share its device list. The desktop host saves it as `devices.json` in its existing app-data folder; the source-only launcher uses `~/.lux-link/devices.json` (override with `LNA_DEVICE_STORE`). Browser-local entries are imported once when that browser opens the updated server; the previous desktop window's separate profile may require re-adding entries. Run one server on the lighting network and have every viewer use that server's address. The dashboard has no authentication: only trusted LAN clients should be able to access it, including its shared inventory controls.
+All browsers opening the same LAN server share its device list. The Mac host saves it as `devices.json` in `~/Library/Application Support/lighting-network-analyzer`; the source-only launcher uses `~/.lux-link/devices.json` (override with `LNA_DEVICE_STORE`). Browser-local entries are imported once when that browser opens the updated server. Run one server on the lighting network and have every viewer use that server's address. The dashboard has no authentication: only trusted LAN clients should be able to access it, including its shared inventory and transmitter controls.
 
-The ProPlex reader uses read-only GET requests for `status.htm` and `protocol_setup.htm`. Selected `ArtNetEnabled` and `sACNEnabled` controls determine configured protocol, including dual mode; no forms are submitted. Green/blue accents identify protocol, not proof of DMX output. Mac uses its menu-bar icon with no Dock window; Windows uses a notification-area tray icon, not a Windows Widgets-panel extension. Both offer **Open Browser**, update checks and Quit.
+The ProPlex reader uses read-only GET requests for `status.htm` and `protocol_setup.htm`. Selected `ArtNetEnabled` and `sACNEnabled` controls determine configured protocol, including dual mode; no forms are submitted. Green/blue accents identify protocol, not proof of DMX output. The native Mac app uses its menu-bar icon with no Dock window and offers **Open Browser**, update checks and Quit.
 
-The installers include the app and its LAN server. **No Node.js or developer tools are required.**
+The installer includes the app and its LAN server. **No Node.js or developer tools are required.**
 
 | Platform | Download | Compatibility |
 | --- | --- | --- |
-| Windows | [Download Windows installer](https://github.com/horner516/lighting-network-analyzer/releases/download/v0.1.7/Lux-Link-0.1.7-windows-x64.exe) | Windows 10 or later, 64-bit |
-| macOS | [Download Mac installer](https://github.com/horner516/lighting-network-analyzer/releases/download/v0.1.7/Lux-Link-0.1.7-mac-universal.dmg) | Universal: Apple silicon and Intel |
+| macOS | [Download Mac installer](https://github.com/horner516/lighting-network-analyzer/releases/download/v0.2.1/Lux-Link-0.2.1-mac-arm64.dmg) | Apple silicon (M1 or newer), macOS 13+ |
 
 See [all releases and checksums](https://github.com/horner516/lighting-network-analyzer/releases). GitHub's automatic **Source code** downloads are not installable apps.
 
 **Signing status:** installers are unsigned and the Mac app is not notarized. Your operating system may show an unknown-publisher warning. On Mac, open the disk image, drag the app to Applications, then approve it in System Settings → Privacy & Security if required by your system. Follow your organization's software policy.
 
-**Device monitoring:** Lux Link now reads ProPlex IQ Two web-monitor status and NETRON web API configuration, with physical port cards. It also includes sACN and Art-Net reception, live channel values, and automatic web/API device polling. Add by IP saves a device and requests its available identity and port information. No simulated devices are included. A status reply is not a continuous health check. See the [changelog](CHANGELOG.md).
+**Device monitoring:** Lux Link reads ProPlex IQ Two web-monitor status and NETRON web API configuration, with physical port cards. Devices are organized into Console, Nodes and Switches tabs. The first console integration recognizes an MA Web Remote and correlates active DMX streams by source IP. Add by IP saves a device and requests its available identity and port information. No simulated devices are included. A status reply is not a continuous health check. See the [changelog](CHANGELOG.md).
 
 ## Device cards and polling
 
@@ -49,11 +48,15 @@ The supported status-page format identifies physical 4-, 6-, 8- or 16-port model
 
 If the web monitor is unreachable or its format is unsupported, current configuration is cleared and polling is shown as unavailable. Device cards never substitute Art-Net discovery information. Configuration snapshots are not continuous health monitoring or proof that DMX is reaching a fixture.
 
+### grandMA console foundation
+
+Add a grandMA station as type **Console**. Lux Link identifies a reachable MA Web Remote on TCP 8080, then lists active sACN and Art-Net universes observed with that console's source IP. Received sACN priority is shown per universe. The verified Web Remote landing page does not publish the console's MA session name or session membership state, so those fields remain **Not reported** instead of being guessed. MA-Net3 session-packet decoding is not included.
+
 Polling requires the updated local LAN app. The hosted website cannot send Art-Net packets onto your LAN. Supported target addresses are private LAN hosts and the lighting convention of 2.x addresses. Only explicitly added IPs are queried; this is not a subnet scanner.
 
 ## Live sACN / Art-Net signals
 
-The Windows/Mac host and `start:lan` server listen on UDP 5568 (sACN) and 6454 (Art-Net). The **Network** tab contains protocol presence, active universes, current and peak packets/s, source name/IP, native universe number, slot count, priority, and last seen. Overview is reserved for devices.
+The Mac host and `start:lan` server listen on UDP 5568 (sACN) and 6454 (Art-Net). The **Network** tab contains protocol presence, active universes, current and peak packets/s, source name/IP, native universe number, slot count, sACN priority, and last seen. Devices are organized on the **Devices** page.
 
 In Network, choose sACN or Art-Net, enter a universe and a channel (1–512), then click **Display current value**. The viewer refreshes every 0.5 seconds and shows the latest received DMX value (0–255) and percentage, separately for each source. Zero is a valid reading; missing channels, timed-out streams, and ended sources show no current value. Changing the fields takes effect when you press the button. sACN multicast universes must be in the host's configured subscription range; Art-Net uses native 0-based universe numbers. Stop viewing pauses channel polling.
 
@@ -67,6 +70,8 @@ The **Network → Transmit** tab generates one 512-channel sACN or Art-Net unive
 
 sACN uses standard universe multicast; Art-Net uses limited broadcast from the server. Generated output may control connected lighting equipment. Confirm the selected universe before enabling it, and stop the transmitter when testing is complete. The hosted website cannot transmit to the LAN.
 
+Use **Network connection** to choose the local IPv4 adapter used by both Receiver and Transmit. Changing the selection restarts the listeners and forces transmit output off. sACN transmission accepts priority 0–200 and defaults to 100. Received sACN stream priority is shown in the Receiver table and console universe badges.
+
 - sACN multicast defaults to universes **1–64** on local IPv4 adapters. Select up to 256 universes with `LNA_SACN_UNIVERSES`, e.g. `1-64,101-110`. Set `LNA_INTERFACE` to a local adapter IPv4 address to restrict multicast subscriptions. Restart after changing adapters/settings. Membership failures are displayed.
 - Art-Net listens for broadcast and unicast ArtDmx reaching the host; its universe addresses are displayed **0-based**. sACN universes are 1-based. Unicast sACN addressed to the server is also accepted, regardless of multicast subscriptions.
 - Presence expires after 3 seconds without a valid non-preview DMX packet. History expires after 5 minutes. Source-terminated sACN streams are marked ended immediately. Preview, alternate start codes (including priority-only packets), synchronization and discovery packets are excluded from DMX presence. This is a traffic monitor, not a console merge/output engine.
@@ -79,8 +84,8 @@ sACN uses standard universe multicast; Art-Net uses limited broadcast from the s
 
 - React dashboard (`app/`) with discovered-device panel and health views
 - Bundled LAN server in `electron/lan-server.cjs`; development helper in `scripts/start-lan.mjs`
-- Windows and Mac desktop host in `electron/main.cjs`
-- Installer settings in `electron-builder.json` and automated release builds in `.github/workflows/desktop-release.yml`
+- Native Apple-silicon menu-bar host in `native-mac/LuxLinkHost.swift`
+- Mac DMG builder in `scripts/build-mac-native.sh` and automated release builds in `.github/workflows/desktop-release.yml`
 
 ## Developer prerequisites
 
@@ -110,49 +115,45 @@ You can override:
 NETWORK_ANALYZER_PORT=50000 NETWORK_ANALYZER_HOST=0.0.0.0 pnpm run start:lan
 ```
 
-## Windows and Mac desktop app
+## Mac desktop app
 
-The installed app serves its bundled dashboard over the LAN and starts only in the Mac menu bar or Windows system tray. It does not automatically open a browser or Dock window. Choose **Open Browser** to view the dashboard and **Quit** to stop the server. Allow the app through your firewall on trusted/private networks when prompted. No login is provided; do not expose the server to the public internet.
+The installed app serves its bundled dashboard over the LAN and starts only in the Mac menu bar. It does not automatically open a browser or Dock window. Choose **Open Browser** to view the dashboard and **Quit Lux Link** to stop the server. Allow the app through your firewall on trusted/private networks when prompted. No login is provided; do not expose the server to the public internet.
 
 To run from source:
 
 ```bash
 pnpm install
-pnpm run desktop
+pnpm run start:lan
 ```
 
 It provides:
 
-- Tray icon matching the dashboard's teal pulse logo
-- Tray menu:
+- Menu-bar icon matching the dashboard's teal pulse logo
+- Menu:
   - Open Browser
   - Check for Updates (GitHub)
   - Quit
-- Manual update checks via **Right Click** tray action in production builds
+- Manual update checks from the menu-bar icon
 
 ## Build installers locally
 
 ```bash
 pnpm install
-pnpm run desktop:web
 pnpm run desktop:test
-# On Windows:
-pnpm exec electron-builder --config electron-builder.json --win --x64 --publish never
-# On Mac (both Apple silicon and Intel in one installer):
-pnpm exec electron-builder --config electron-builder.json --mac --universal --publish never
+pnpm run mac:native
 ```
 
 Artifacts appear in `desktop-dist/`.
 
-Build on Windows for the Windows installer and on Mac for `.dmg` and `.zip` packages. Windows installer, uninstaller, shortcuts, and the Mac app use matching icons derived from `public/app-icon.svg`.
+Build on an Apple-silicon Mac for the arm64 `.dmg`. The app and installer use the matching icon from `public/app-icon.icns`. The build embeds the current arm64 Node runtime but does not include Electron or Chromium.
 
-Pushing a version tag such as `v0.1.1` triggers native Windows and Mac builds. GitHub publishes the release only after both builds and packaged startup checks succeed. Update `package.json`, these versioned links, and `RELEASE_NOTES.md` before tagging a new version.
+Pushing a version tag such as `v0.2.1` triggers the Apple-silicon Mac build. GitHub publishes the release only after tests and the packaged-server startup check succeed. Update `package.json`, these versioned links, and `RELEASE_NOTES.md` before tagging a new version.
 
 ## Updates
 
 The dashboard header shows its version and a **Check for updates** button. The browser asks its server to check the repository's latest public stable GitHub release against the installed server version. If newer, the browser opens the GitHub download page. A visible link is also provided if popup blocking prevents opening the window. No GitHub sign-in or token is required; the server needs internet access. Offline and rate-limit errors are displayed explicitly. The hosted website checks its own deployed version; use the local server to check your installed app.
 
-Use **Check for Updates** in the tray/menu-bar menu. Windows can download and install a newer release after confirmation. This unsigned Mac release checks for newer versions and opens GitHub for manual installation; seamless Mac updates require signed releases. Offline checks report an error without interrupting the LAN server.
+Use **Check for Updates** in the menu-bar menu. This unsigned Mac release checks GitHub and opens the latest release for manual installation when a newer version exists. Offline checks report an error without interrupting the LAN server.
 
 ## Deployment
 

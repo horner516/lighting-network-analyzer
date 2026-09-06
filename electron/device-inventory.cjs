@@ -7,7 +7,8 @@ function deviceEntry(value) {
   const ip = parts.length === 4 && parts.every(p => /^\d{1,3}$/.test(p) && Number(p) <= 255) ? parts.map(Number).join('.') : '';
   if (!validTarget(ip)) throw new RangeError('Enter a private LAN or 2.x lighting-network IPv4 host address.');
   const name = typeof value.name === 'string' ? value.name.replace(/[\x00-\x1f\x7f]/g, '').trim().slice(0, 128) : '';
-  return { ip, name: name || `Device ${ip}`, source: 'manual', state: 'Unverified' };
+  const deviceType = ['Console', 'Node', 'Switch'].includes(value.deviceType) ? value.deviceType : 'Node';
+  return { ip, name: name || `Device ${ip}`, source: 'manual', state: 'Unverified', deviceType };
 }
 
 function createDeviceInventory({ file = null, poll, intervalMs = 15000 }) {
