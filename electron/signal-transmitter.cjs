@@ -23,10 +23,10 @@ function artNetFrame(universe, levels, sequence) {
   return packet;
 }
 
-function sacnFrame(universe, levels, sequence, cid, priority = 100) {
+function sacnFrame(universe, levels, sequence, cid, priority = 100, options = 0) {
   const packet = Buffer.alloc(638);
   packet.writeUInt16BE(16, 0); ACN_ID.copy(packet, 4); packet.writeUInt16BE(0x726e, 16); packet.writeUInt32BE(4, 18); cid.copy(packet, 22);
-  packet.writeUInt16BE(0x7258, 38); packet.writeUInt32BE(2, 40); packet.write('Lux Link Transmitter', 44, 'utf8'); packet[108] = priority; packet[111] = sequence; packet.writeUInt16BE(universe, 113);
+  packet.writeUInt16BE(0x7258, 38); packet.writeUInt32BE(2, 40); packet.write('Lux Link Transmitter', 44, 'utf8'); packet[108] = priority; packet[111] = sequence; packet[112] = options; packet.writeUInt16BE(universe, 113);
   packet.writeUInt16BE(0x720b, 115); packet[117] = 2; packet[118] = 0xa1; packet.writeUInt16BE(1, 121); packet.writeUInt16BE(513, 123); levels.copy(packet, 126);
   return packet;
 }

@@ -6,6 +6,7 @@ import { DeviceCards, type NodeInfo } from '@/components/device-cards';
 import { ConsoleCards } from '@/components/console-cards';
 import { DeviceLayout } from '@/components/device-layout';
 import { SignalMonitor } from '@/components/signal-monitor';
+import { FixtureWorkspace } from '@/components/fixture-workspace';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -169,6 +170,7 @@ export default function Home() {
       <TabsList aria-label="Dashboard views" className="shrink-0 bg-[#1b252c] text-slate-100">
         <TabsTrigger value="devices" className="px-4 text-slate-300 data-active:bg-teal-300/15 data-active:text-teal-200">Devices</TabsTrigger>
         <TabsTrigger value="signals" className="px-4 text-slate-300 data-active:bg-teal-300/15 data-active:text-teal-200">Network</TabsTrigger>
+        <TabsTrigger value="fixtures" className="px-4 text-slate-300 data-active:bg-teal-300/15 data-active:text-teal-200">Fixtures</TabsTrigger>
       </TabsList>
             {view === 'devices' && <div className="flex w-full flex-wrap items-center gap-2 md:w-auto"><div className="relative min-w-[180px] flex-1 md:w-60"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16}/><Input aria-label="Search devices" value={query} onChange={event => setQuery(event.target.value)} placeholder="Search name or IP…" className="border-white/10 bg-white/[.04] pl-9"/></div>
               <Dialog open={addOpen} onOpenChange={open => { setAddOpen(open); if (!open) setAddError(''); }}>
@@ -187,6 +189,7 @@ export default function Home() {
         <Tabs defaultValue="Node" className="gap-4"><TabsList aria-label="Device type" className="bg-[#1b252c] text-slate-100"><TabsTrigger value="Console" className="px-5">Consoles</TabsTrigger><TabsTrigger value="Node" className="px-5">Nodes</TabsTrigger><TabsTrigger value="Switch" className="px-5">Switches</TabsTrigger></TabsList><TabsContent value="Console"><ConsoleCards devices={deviceList} query={query} info={nodeInfo} pollingIp={pollingIp} pollBusy={pollBusy} onPoll={() => refreshDevices('Console')}/></TabsContent>{(['Node','Switch'] as const).map(type => <TabsContent key={type} value={type}><DeviceCards devices={deviceList} query={query} info={nodeInfo} pollingIp={pollingIp} deviceType={type} pollBusy={pollBusy} onPoll={type === 'Node' ? () => refreshDevices('Node') : undefined}/></TabsContent>)}</Tabs>
       </TabsContent>
       <TabsContent value="signals"><SignalMonitor /></TabsContent>
+      <TabsContent value="fixtures"><FixtureWorkspace /></TabsContent>
       </Tabs>
     </div>
   </main>;

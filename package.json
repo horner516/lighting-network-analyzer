@@ -3,7 +3,7 @@
   "description": "Lux Link lighting network dashboard and LAN server",
   "author": "Brandon Horner",
   "main": "scripts/native-server.cjs",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "private": true,
   "engines": {
     "node": ">=22.13.0"
@@ -17,7 +17,7 @@
     "desktop:web": "vite build --config desktop/vite.config.ts",
     "desktop:build": "pnpm run mac:native",
     "mac:native": "zsh scripts/build-mac-native.sh",
-    "desktop:test": "node --test tests/desktop-server.test.cjs tests/manual-devices.test.mjs tests/updates.test.mjs tests/signals.test.cjs tests/signal-transmitter.test.cjs tests/node-poller.test.cjs tests/netron-api.test.cjs tests/proplex-web.test.cjs tests/device-inventory.test.cjs tests/ma-console.test.cjs tests/reachability.test.cjs tests/native-host.test.cjs tests/port-appearance.test.mjs tests/device-layout.test.mjs",
+    "desktop:test": "node --test tests/desktop-server.test.cjs tests/manual-devices.test.mjs tests/updates.test.mjs tests/signals.test.cjs tests/signal-transmitter.test.cjs tests/node-poller.test.cjs tests/netron-api.test.cjs tests/proplex-web.test.cjs tests/device-inventory.test.cjs tests/ma-console.test.cjs tests/reachability.test.cjs tests/native-host.test.cjs tests/port-appearance.test.mjs tests/device-layout.test.mjs tests/mvr-fixtures.test.cjs",
     "lint": "oxlint",
     "format": "oxfmt"
   },

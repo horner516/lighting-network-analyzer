@@ -4,7 +4,7 @@ Standalone desktop and web dashboard for monitoring lighting network devices (sA
 
 ## Downloads
 
-**Version 0.2.2:** On-demand polling for all devices, grandMA session/show-file reading, explicit reachability status, and simplified receiver streams in the native Apple-silicon menu-bar app.
+**Version 0.3.0:** MVR fixture import, embedded GDTF mapping, fixture-type grouping, and multi-universe sACN/Art-Net fixture tests in the native Apple-silicon menu-bar app.
 
 The header **Layout** button opens an IP-address list. Drag the grips (mouse or touch), or use the arrow controls, to arrange dashboard cards. Delete marks a device for removal; **Undo deletions** or **Cancel** can reverse draft changes. **Save layout** applies the order and removals server-wide. Removed nodes stop being polled and may be added again by IP. Concurrent edits are rejected if the server list changed while the editor was open. After the first saved layout, automatic imports from legacy browser lists are disabled to prevent deleted devices from reappearing.
 
@@ -16,7 +16,7 @@ The installer includes the app and its LAN server. **No Node.js or developer too
 
 | Platform | Download | Compatibility |
 | --- | --- | --- |
-| macOS | [Download Mac installer](https://github.com/horner516/lighting-network-analyzer/releases/download/v0.2.2/Lux-Link-0.2.2-mac-arm64.dmg) | Apple silicon (M1 or newer), macOS 13+ |
+| macOS | [Download Mac installer](https://github.com/horner516/lighting-network-analyzer/releases/download/v0.3.0/Lux-Link-0.3.0-mac-arm64.dmg) | Apple silicon (M1 or newer), macOS 13+ |
 
 See [all releases and checksums](https://github.com/horner516/lighting-network-analyzer/releases). GitHub's automatic **Source code** downloads are not installable apps.
 
@@ -61,6 +61,14 @@ Polling requires the updated local LAN app. The hosted website cannot send Art-N
 ## Live sACN / Art-Net signals
 
 The Mac host and `start:lan` server listen on UDP 5568 (sACN) and 6454 (Art-Net). The **Network** tab groups streams by source IP and summarizes sequential addresses, for example `sACN · 1–64`. Select one universe to expand its current rate, slots, priority, packet count, first 16 levels and last-seen state directly below that universe; selecting another stream closes the previous detail. Devices are organized on the **Devices** page.
+
+## MVR fixtures and test output
+
+The top-level **Fixtures** workspace imports an `.mvr` file into the shared Lux Link server. It reads the MVR patch and embedded GDTF profiles, then groups fixtures by manufacturer, model and DMX mode. The imported rig remains available to every browser using that server. Profiles or modes that cannot be mapped remain visible as unsupported and never receive guessed DMX values.
+
+Select one or more fixture types, choose sACN or Art-Net, then enable the required test: 100% output, RGB color sweep, reversing pan circle, repeating tilt, Gobo Wheel 1 or Gobo Wheel 2. Gobo tests change slots every second and apply profile-defined rotation only when the GDTF provides a usable rotation range. **Stop all tests** sends three final blackout frames on each active universe before disabling the fixture-test engine; sACN frames are marked stream-terminated. Stop active tests before changing the fixture selection, protocol or priority.
+
+sACN uses the selected 0–200 priority in each packet. Standard ArtDmx has no network-priority field, so Lux Link explicitly reports priority as unavailable when Art-Net is selected. Fixture tests send real multi-universe DMX and can illuminate or move equipment; clear the performance area and choose the correct network connection before enabling them.
 
 In Network, choose sACN or Art-Net, enter a universe and a channel (1–512), then click **Display current value**. The viewer refreshes every 0.5 seconds and shows the latest received DMX value (0–255) and percentage, separately for each source. Zero is a valid reading; missing channels, timed-out streams, and ended sources show no current value. Changing the fields takes effect when you press the button. sACN multicast universes must be in the host's configured subscription range; Art-Net uses native 0-based universe numbers. Stop viewing pauses channel polling.
 
@@ -151,7 +159,7 @@ Artifacts appear in `desktop-dist/`.
 
 Build on an Apple-silicon Mac for the arm64 `.dmg`. The app and installer use the matching icon from `public/app-icon.icns`. The build embeds the current arm64 Node runtime but does not include Electron or Chromium.
 
-Pushing a version tag such as `v0.2.2` triggers the Apple-silicon Mac build. GitHub publishes the release only after tests and the packaged-server startup check succeed. Update `package.json`, these versioned links, and `RELEASE_NOTES.md` before tagging a new version.
+Pushing a version tag such as `v0.3.0` triggers the Apple-silicon Mac build. GitHub publishes the release only after tests and the packaged-server startup check succeed. Update `package.json`, these versioned links, and `RELEASE_NOTES.md` before tagging a new version.
 
 ## Updates
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0 — 2026-09-06
+
+- Added a top-level **Fixtures** workspace with server-owned MVR import. Lux Link reads `GeneralSceneDescription.xml`, patch addresses and embedded GDTF definitions, persists the parsed rig, groups fixtures by manufacturer, model and mode, and shows unsupported profiles without guessing channel mappings.
+- Added multi-universe fixture test output over selectable sACN or Art-Net. Tests include 100% output, a six-second RGB sweep, a three-second pan/tilt circle that reverses direction, a repeating three-second tilt test, and one-second Gobo Wheel 1 and 2 stepping with profile-defined rotation where available.
+- Fixture types can be selected together, each test reports how many selected fixtures support it, and **Stop all tests** sends three final blackout frames per active universe before disabling output. sACN marks those frames as stream-terminated. Changing fixture selection, protocol or priority requires stopping active tests first.
+- sACN fixture tests carry the selected 0–200 packet priority. The interface explicitly reports priority as unavailable for Art-Net because standard ArtDmx packets do not contain an on-wire priority field.
+- MVR uploads are limited to 100 MB and ZIP resources are bounded during expansion. Encrypted, ZIP64, unsupported-compression and malformed archives are rejected. Fixture uploads and output controls are restricted to the local same-origin LAN server.
+
 ## 0.2.2 — 2026-09-06
 
 - Added grandMA Web Remote screen reading in the native Mac app. Lux Link opens the Remote user's Network view and uses macOS text recognition to read the console's session name, show file and session status. Verified live against `192.168.1.11` as session `LITE_4`, show file `Exe summit patch`, status `IdleMaster`.

@@ -1,13 +1,13 @@
-## v0.2.2 — Console metadata, reachability and unified polling
+## v0.3.0 — MVR fixture import and test output
 
-- **Poll All Devices:** the global control polls consoles, nodes and switches together. Dedicated Poll Consoles and Poll Nodes controls remain beside their sections.
-- **grandMA Web Remote metadata:** the native Mac app reads the console session name, show-file name and session status when a console is added or explicitly polled.
-- **Device reachability:** after supported web/API probes fail, Lux Link sends four pings one second apart and displays an explicit online/offline indicator.
-- **Simplified receiver streams:** sACN and Art-Net universes are grouped by source device, sequential universes collapse into ranges, and only the selected universe expands its live details.
-- **Native Apple-silicon host:** this release keeps the compact menu-bar architecture without Electron or Chromium, including LAN dashboard access, UDP receive/transmit and server-owned device inventory.
+- **Fixtures workspace:** upload an MVR to the shared Lux Link server and browse fixtures grouped by manufacturer, model and GDTF mode.
+- **Profile-aware mapping:** embedded GDTF definitions provide intensity, shutter, RGB, 16-bit pan/tilt and gobo channel mappings. Unsupported or ambiguous modes stay visible and are never guessed.
+- **Multi-universe tests:** select fixture types and transmit 100% output, an RGB sweep, a reversing pan circle, a repeating tilt test, or one-second Gobo Wheel 1/2 steps with profile-defined rotation when available.
+- **sACN and Art-Net:** choose either output protocol and set sACN priority from 0–200. Lux Link reports priority as unavailable for Art-Net because standard ArtDmx has no priority field.
+- **Safety controls:** every test shows its supported fixture count, active configuration is locked until output stops, and Stop all tests sends final blackout frames before disabling the fixture-test transmitter.
 
-This release contains one unsigned, non-notarized **macOS Apple silicon** installer. Windows and Intel Mac installers are not produced for v0.2.2. Quit the previous Lux Link app before installing, then drag Lux Link to Applications. If macOS blocks first launch, approve it in System Settings → Privacy & Security according to your organization’s policy.
+This release contains one unsigned, non-notarized **macOS Apple silicon** installer. Windows and Intel Mac installers are not produced for v0.3.0. Quit the previous Lux Link app before installing, then drag Lux Link to Applications. If macOS blocks first launch, approve it in System Settings → Privacy & Security according to your organization’s policy.
 
-Live read-only verification of the new console reader was completed against the grandMA console at `192.168.1.11`, returning session `LITE_4`, show file `Exe summit patch`, and status `IdleMaster`.
+Fixture tests transmit real DMX and may illuminate or move equipment. Confirm the selected network connection, clear the performance area, and use a priority appropriate for the system before enabling a test.
 
-See the [changelog](https://github.com/horner516/lighting-network-analyzer/blob/v0.2.2/CHANGELOG.md).
+See the [changelog](https://github.com/horner516/lighting-network-analyzer/blob/v0.3.0/CHANGELOG.md).
