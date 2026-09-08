@@ -76,6 +76,25 @@ test('LAN server binds all IPv4 interfaces and advertises non-loopback addresses
   } finally { lan.server.closeAllConnections(); await new Promise(resolve => lan.server.close(resolve)); }
 });
 
+test('LAN server preserves Console type when polling newly added devices', async () => {
+  let observedOptions;
+  const consoleInfo = { ip:'192.168.1.5', checkedAt:Date.now(), responding:true, online:true, consoleBrand:'ETC', consoleFamily:'Eos Family', consoleServicePort:3032, ports:[] };
+  const lan = await startLanServer({ root, host:'127.0.0.1', preferredPort:48782,
+    devicePollerFactory:() => ({ poll:async (ip, options) => { observedOptions = options; return { ...consoleInfo, ip }; }, updatePortUniverses:async()=>{} }),
+    listenerOptions:{ports:{sacn:0,artnet:0},bindAddress:'127.0.0.1',joinMulticast:false} });
+  try {
+    await fetch(lan.url+'/api/devices',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ip:'192.168.1.5',deviceType:'Console'})});
+    let snapshot;
+    for (let attempt = 0; attempt < 20; attempt++) {
+      snapshot = await fetch(lan.url+'/api/devices').then(response => response.json());
+      if (snapshot.info['192.168.1.5']) break;
+      await new Promise(resolve => setTimeout(resolve, 5));
+    }
+    assert.deepEqual(observedOptions, { deviceType:'Console' });
+    assert.equal(snapshot.info['192.168.1.5'].consoleBrand, 'ETC');
+  } finally { lan.server.closeAllConnections(); await new Promise(resolve => lan.server.close(resolve)); }
+});
+
 test('configured nodes can update output universes through the guarded server endpoint', async () => {
   let request;
   const node = { ip:'10.0.26.105', checkedAt:Date.now(), responding:true, online:true, source:'ProPlex web monitor', name:'Test', description:'IQ Two', proplex:true, universeEditing:'proplex-web', ports:[], subnetMask:null, firmwareCode:null, mac:'', report:'', note:'', error:'' };

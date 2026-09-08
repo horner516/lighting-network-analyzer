@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.3 — 2026-09-08
+
+- Fixed console additions being routed through the generic node poller by the LAN server. The saved Console type now reaches vendor detection, allowing ETC and MA cards to leave their pending state. Pending cards now read **Detecting Console Info**.
+
 ## 0.3.2 — 2026-09-08
 
 - Expanded Network stream details with a paged channel-value reader. Previous/Next controls and a range slider navigate every DMX channel from 1–512 in 16-channel groups while values continue refreshing live.

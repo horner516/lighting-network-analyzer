@@ -19,14 +19,14 @@ function addresses(port, host) {
   return { port, urls: ips.map(ip => `http://${ip.includes(':') ? `[${ip}]` : ip}:${port}`) };
 }
 
-async function startLanServer({ root, preferredPort = 47652, host = '0.0.0.0', listenerOptions = {}, deviceStorePath = null, pollDevice, updatePortUniverses, inventoryIntervalMs = 15000, releaseRequest }) {
+async function startLanServer({ root, preferredPort = 47652, host = '0.0.0.0', listenerOptions = {}, deviceStorePath = null, pollDevice, updatePortUniverses, inventoryIntervalMs = 15000, releaseRequest, devicePollerFactory = createDevicePoller }) {
   if (!Number.isInteger(preferredPort) || preferredPort < 1024 || preferredPort > 65535) throw new Error('Server port must be an integer from 1024 to 65535.');
   const base = path.resolve(root);
   if (!fs.existsSync(path.join(base, 'index.html'))) throw new Error('The bundled dashboard is missing. Reinstall the app.');
   let listener, transmitter, selectedInterface = listenerOptions.interfaceIp || process.env.LNA_INTERFACE || '';
   const checkRelease = createReleaseChecker(version, releaseRequest);
-  const devicePoller = createDevicePoller();
-  const inventory = createDeviceInventory({ file: deviceStorePath, poll: pollDevice || (ip => devicePoller.poll(ip)), intervalMs: inventoryIntervalMs });
+  const devicePoller = devicePollerFactory();
+  const inventory = createDeviceInventory({ file: deviceStorePath, poll: pollDevice || ((ip, options) => devicePoller.poll(ip, options)), intervalMs: inventoryIntervalMs });
   const updateNodePorts = updatePortUniverses || ((ip, updates) => devicePoller.updatePortUniverses(ip, updates));
   function availableInterfaces() {
     return Object.entries(networkInterfaces()).flatMap(([name, list]) => (list || []).filter(item => item.family === 'IPv4' && !item.internal).map(item => ({ name, address: item.address })));
