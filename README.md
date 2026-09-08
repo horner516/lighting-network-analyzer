@@ -4,7 +4,7 @@ Standalone desktop and web dashboard for monitoring lighting network devices (sA
 
 ## Downloads
 
-**Version 0.3.1:** verified ProPlex output-universe editing with physical port order, plus a future-feature Fixtures workspace. MVR upload and fixture output are intentionally disabled in this release.
+**Version 0.3.2:** vendor-aware ETC/MA console detection, live ProPlex port signal states, and a complete 512-channel Network value reader. MVR upload and fixture output remain intentionally disabled in this release.
 
 The header **Layout** button opens an IP-address list. Drag the grips (mouse or touch), or use the arrow controls, to arrange dashboard cards. Delete marks a device for removal; **Undo deletions** or **Cancel** can reverse draft changes. **Save layout** applies the order and removals server-wide. Removed nodes stop being polled and may be added again by IP. Concurrent edits are rejected if the server list changed while the editor was open. After the first saved layout, automatic imports from legacy browser lists are disabled to prevent deleted devices from reappearing.
 
@@ -16,13 +16,13 @@ The installer includes the app and its LAN server. **No Node.js or developer too
 
 | Platform | Download | Compatibility |
 | --- | --- | --- |
-| macOS | [Download Mac installer](https://github.com/horner516/lighting-network-analyzer/releases/download/v0.3.1/Lux-Link-0.3.1-mac-arm64.dmg) | Apple silicon (M1 or newer), macOS 13+ |
+| macOS | [Download Mac installer](https://github.com/horner516/lighting-network-analyzer/releases/download/v0.3.2/Lux-Link-0.3.2-mac-arm64.dmg) | Apple silicon (M1 or newer), macOS 13+ |
 
 See [all releases and checksums](https://github.com/horner516/lighting-network-analyzer/releases). GitHub's automatic **Source code** downloads are not installable apps.
 
 **Signing status:** installers are unsigned and the Mac app is not notarized. Your operating system may show an unknown-publisher warning. On Mac, open the disk image, drag the app to Applications, then approve it in System Settings → Privacy & Security if required by your system. Follow your organization's software policy.
 
-**Device monitoring:** Lux Link reads ProPlex IQ Two web-monitor status and NETRON web API configuration, with physical port cards. Devices are organized into Console, Nodes and Switches tabs. The Mac console integration reads session, show-file and status text from the MA Web Remote Network view and correlates active DMX streams by source IP. Add by IP saves a device and requests its available identity and port information. No simulated devices are included. See the [changelog](CHANGELOG.md).
+**Device monitoring:** Lux Link reads ProPlex IQ Two web-monitor status and NETRON web API configuration, with physical port cards. Devices are organized into Console, Nodes and Switches tabs. Console polling detects MA Lighting or ETC before selecting the vendor-specific read-only path. The Mac MA integration reads session, show-file and status text from the Web Remote Network view; ETC Eos Family detection uses the documented OSC TCP service without sending commands. Both correlate active DMX streams by source IP. Add by IP saves a device and requests its available identity and port information. No simulated devices are included. See the [changelog](CHANGELOG.md).
 
 ## Device cards and polling
 
@@ -31,6 +31,8 @@ Saved nodes and switches are polled through their live web/API interface when th
 If every supported web/API request fails, Lux Link runs four ICMP ping attempts one second apart. A reply shows **Device online** while explaining that device data is unavailable; four failed replies show **Device offline**. A web/API response also counts as online. Ping is used only as the fallback reachability check and does not provide configuration or prove lighting-data flow.
 
 ProPlex 16-port cards use two rows of eight; NETRON EN12 uses one row of twelve. Six-port ProPlex cards use two rows of three and eight-port cards use one row. Click a port for details. On supported ProPlex cards, **Edit ports** replaces output-universe labels with number fields in physical port order; press Tab to move to the next port, then save once to apply the staged changes.
+
+For output status, each configured port is correlated with the live Network receiver. A current matching stream keeps the protocol color. When the receiver is actively monitoring that protocol and universe but sees no current stream, the universe and **NO DATA** label turn red, following ProPlex Manager's convention. Lux Link leaves the state neutral when the sACN universe is outside its subscribed range or a required listener is unavailable, because absence cannot then be proven.
 
 ### NETRON web API
 
@@ -56,11 +58,17 @@ Add a grandMA station as type **Console**. Lux Link identifies its MA Web Remote
 
 The Web Remote is queried when the console is first added and when **Poll Consoles** is pressed; it is not part of the recurring 15-second node cycle. Opening the Network view changes only that Web Remote user's displayed window. Lux Link also lists active sACN and Art-Net universes observed with the console's source IP, including received sACN priority.
 
+### ETC Eos console detection
+
+When an added Console is not an MA Web Remote, Lux Link checks the ETC-documented Eos OSC TCP service on port 3032 and then the optional Third Party OSC service on port 3037. It opens and closes the connection without sending OSC commands. A match is displayed as **ETC Eos Family console** with its responding service port; it never shows MA session or Web Remote waiting text. Active universes are still derived from received sACN and Art-Net whose source IP matches the console.
+
+This identifies the Eos software family, including console and client-class stations that expose the service; it does not claim a specific hardware model. Console name and software version require ACN/SLP discovery, which is not implemented yet.
+
 Polling requires the updated local LAN app. The hosted website cannot send Art-Net packets onto your LAN. Supported target addresses are private LAN hosts and the lighting convention of 2.x addresses. Only explicitly added IPs are queried; this is not a subnet scanner.
 
 ## Live sACN / Art-Net signals
 
-The Mac host and `start:lan` server listen on UDP 5568 (sACN) and 6454 (Art-Net). The **Network** tab groups streams by source IP and summarizes sequential addresses, for example `sACN · 1–64`. Select one universe to expand its current rate, slots, priority, packet count, first 16 levels and last-seen state directly below that universe; selecting another stream closes the previous detail. Devices are organized on the **Devices** page.
+The Mac host and `start:lan` server listen on UDP 5568 (sACN) and 6454 (Art-Net). The **Network** tab groups streams by source IP and summarizes sequential addresses, for example `sACN · 1–64`. Select one universe to expand its current rate, slots, priority, packet count and last-seen state directly below that universe. The live value reader shows 16 channels at a time with Previous/Next controls and a slider for navigating channels 1–512; selecting another stream closes the previous detail. Devices are organized on the **Devices** page.
 
 ## Future MVR fixture support
 
@@ -157,7 +165,7 @@ Artifacts appear in `desktop-dist/`.
 
 Build on an Apple-silicon Mac for the arm64 `.dmg`. The app and installer use the matching icon from `public/app-icon.icns`. The build embeds the current arm64 Node runtime but does not include Electron or Chromium.
 
-Pushing a version tag such as `v0.3.1` triggers the Apple-silicon Mac build. GitHub publishes the release only after tests and the packaged-server startup check succeed. Update `package.json`, these versioned links, and `RELEASE_NOTES.md` before tagging a new version.
+Pushing a version tag such as `v0.3.2` triggers the Apple-silicon Mac build. GitHub publishes the release only after tests and the packaged-server startup check succeed. Update `package.json`, these versioned links, and `RELEASE_NOTES.md` before tagging a new version.
 
 ## Updates
 

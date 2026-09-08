@@ -51,7 +51,7 @@ function createDeviceInventory({ file = null, poll, intervalMs = 15000 }) {
         const device = devices.find(d => !visited.has(d.ip) && runningTargets.has(d.ip));
         if (!device) break;
         visited.add(device.ip); pollingIp = device.ip;
-        try { const result = await poll(device.ip); if (devices.includes(device)) info[device.ip] = result; }
+        try { const result = await poll(device.ip, { deviceType: device.deviceType }); if (devices.includes(device)) info[device.ip] = result; }
         catch { if (devices.includes(device)) info[device.ip] = { ip: device.ip, checkedAt: Date.now(), responding: false, ports: [], firmwareCode: null, error: 'Device polling failed.' }; }
       }
     }).finally(() => {

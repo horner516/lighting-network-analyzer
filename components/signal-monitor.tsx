@@ -1,14 +1,16 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { Radio } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Radio } from 'lucide-react';
 import { ChannelViewer } from '@/components/channel-viewer';
 import { SignalTransmitter } from '@/components/signal-transmitter';
+import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 type Signal = { id: string; protocol: string; universe: number; ip: string; cid: string; sourceName: string; priority: number | null; status: string; lastSeen: number; rate: number; packets: number; slots: number; nonzero: number; previewLevels: number[] };
 type Snapshot = { available: boolean; sampledAt: number; universeSpec: string; droppedSources: number; protocols: Record<string, { port: number; status: string; error: string; received: number; ignored: number; peakRate: number }>; memberships: { name: string; address: string; joined: number; failed: number; error: string }[]; signals: Signal[] };
 type NetworkSelection = { available: boolean; selected: string; interfaces: { name: string; address: string }[]; transmitterEnabled: boolean };
+type RangeReading = { available: boolean; sampledAt: number; protocol: string; universe: number; start: number; end: number; streams: { id: string; status: string; slots: number; values: (number | null)[] }[] };
 
 function universeRanges(signals: Signal[]) {
   const universes = [...new Set(signals.map(signal => signal.universe))].sort((a, b) => a - b);
@@ -23,6 +25,53 @@ function universeRanges(signals: Signal[]) {
 
 function sourceLabel(signals: Signal[], ip: string) {
   return signals.find(signal => signal.sourceName)?.sourceName || `Device ${ip}`;
+}
+
+function StreamChannelValues({ signal }: { signal: Signal }) {
+  const pageSize = 16;
+  const lastPage = 497;
+  const [start, setStart] = useState(1);
+  const [reading, setReading] = useState<RangeReading | null>(null);
+  const [error, setError] = useState('');
+  useEffect(() => {
+    let disposed = false;
+    let timer: ReturnType<typeof setTimeout>;
+    let controller: AbortController;
+    async function refresh() {
+      controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 2000);
+      try {
+        const query = new URLSearchParams({ protocol: signal.protocol, universe: String(signal.universe), start: String(start), count: String(pageSize) });
+        const response = await fetch(`/api/signals/channels?${query}`, { cache:'no-store', signal:controller.signal });
+        if (!response.ok) throw Error();
+        const next = await response.json() as RangeReading;
+        if (!next.available || !Array.isArray(next.streams)) throw Error();
+        if (!disposed) { setReading(next); setError(''); }
+      } catch {
+        if (!disposed) { setReading(null); setError('Channel values unavailable.'); }
+      } finally {
+        clearTimeout(timeout);
+        if (!disposed) timer = setTimeout(refresh, 500);
+      }
+    }
+    void refresh();
+    return () => { disposed = true; clearTimeout(timer); controller?.abort(); };
+  }, [signal.protocol, signal.universe, start]);
+  const stream = reading?.streams.find(item => item.id === signal.id);
+  const values = stream?.values || Array(pageSize).fill(null);
+  function move(next: number) { setReading(null); setError(''); setStart(Math.min(lastPage, Math.max(1, next))); }
+  return <div className="mt-4 border-t border-white/10 pt-3">
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <h5 className="font-medium text-slate-200">Read values · Channels {start}–{Math.min(512, start + pageSize - 1)}</h5>
+      <div className="flex items-center gap-2" role="group" aria-label="Channel range">
+        <Button type="button" size="sm" variant="outline" disabled={start === 1} onClick={() => move(start - pageSize)} aria-label="Previous 16 channels"><ChevronLeft size={16}/>Previous</Button>
+        <span className="min-w-24 text-center font-mono text-xs text-slate-400">{start}–{Math.min(512, start + pageSize - 1)} / 512</span>
+        <Button type="button" size="sm" variant="outline" disabled={start >= lastPage} onClick={() => move(start + pageSize)}>Next<ChevronRight size={16}/></Button>
+      </div>
+    </div>
+    <input aria-label="Choose channel range" className="mt-3 w-full accent-teal-300" type="range" min="1" max={lastPage} step={pageSize} value={start} onChange={event => move(Number(event.target.value))}/>
+    {error ? <p role="alert" className="mt-3 text-amber-200">{error}</p> : !reading ? <p role="status" className="mt-3 text-slate-400">Reading channels…</p> : <div className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-8 lg:grid-cols-16">{values.map((level, index) => <div key={start + index} className="rounded bg-black/25 px-2 py-2 text-center font-mono"><div className="text-xs text-slate-500">{start + index}</div><div className="mt-1 text-slate-100">{level ?? '—'}</div></div>)}</div>}
+  </div>;
 }
 
 function Receiver({ compact = false }: { compact?: boolean }) {
@@ -72,7 +121,7 @@ function Receiver({ compact = false }: { compact?: boolean }) {
           <div className="flex flex-wrap items-start justify-between gap-3 border-b border-white/10 p-4"><div><h3 className="font-semibold text-slate-100">{sourceLabel(device.signals, device.ip)}</h3><p className="mt-1 font-mono text-sm text-slate-400">{device.ip}</p></div><div className="text-right text-sm text-slate-400"><p>{device.signals.filter(signal => signal.status === 'present').length} active universes</p><p>{device.signals.reduce((total, signal) => total + signal.rate, 0).toFixed(1)} packets/s</p></div></div>
           <div className="space-y-4 p-4">{summaries.map(group => <div key={group.protocol}><p className={`mb-2 font-mono text-sm ${group.protocol === 'sACN' ? 'text-teal-200' : 'text-sky-200'}`}>{group.protocol} · {universeRanges(group.signals)}</p><div className="space-y-2">{group.signals.sort((a, b) => a.universe - b.universe).map(signal => <div key={signal.id}>
             <button type="button" aria-expanded={selected === signal.id} onClick={() => setSelected(current => current === signal.id ? '' : signal.id)} className={`flex w-full items-center justify-between gap-3 rounded-md border px-3 py-2 text-left transition ${selected === signal.id ? 'border-teal-300/40 bg-teal-300/10' : 'border-white/[.07] bg-white/[.025] hover:border-white/20'}`}><span><span className="font-mono">Universe {signal.universe}</span>{signal.priority !== null && <span className="ml-3 text-sm text-slate-400">Priority {signal.priority}</span>}</span><span className={`text-sm ${signal.status === 'present' ? 'text-teal-300' : 'text-amber-200'}`}>{signal.status === 'present' ? 'Present' : signal.status === 'timed-out' ? 'Timed out' : signal.status === 'terminated' ? 'Ended' : 'Unavailable'}</span></button>
-            {selected === signal.id && detail && <div className="mx-2 rounded-b-md border-x border-b border-white/10 bg-[#11171b] p-4 text-sm"><div className="flex flex-wrap justify-between gap-3"><h4>{detail.protocol} · Universe {detail.universe} · Channels 1–16</h4><button className="text-teal-300 hover:underline" onClick={() => setSelected('')}>Close</button></div><div className="mt-2 grid gap-2 text-slate-400 sm:grid-cols-4"><span>{detail.rate.toFixed(1)} packets/s</span><span>{detail.slots} slots</span><span>{detail.nonzero} nonzero</span><span>{Math.max(0, Math.floor((data.sampledAt - detail.lastSeen) / 1000))}s ago</span></div><p className="mt-2 break-all font-mono text-xs text-slate-500">{detail.cid ? `CID ${detail.cid} · ` : ''}{detail.packets} packets received · {detail.status === 'present' ? 'latest received frame' : 'historical frame; not current'}</p><div className="mt-3 flex flex-wrap gap-2">{detail.previewLevels.map((level, i) => <span key={i} className="rounded bg-black/25 px-2 py-1 font-mono"><span className="text-slate-500">{i + 1}:</span> {level}</span>)}</div></div>}
+            {selected === signal.id && detail && <div className="mx-2 rounded-b-md border-x border-b border-white/10 bg-[#11171b] p-4 text-sm"><div className="flex flex-wrap justify-between gap-3"><h4>{detail.protocol} · Universe {detail.universe}</h4><button className="text-teal-300 hover:underline" onClick={() => setSelected('')}>Close</button></div><div className="mt-2 grid gap-2 text-slate-400 sm:grid-cols-4"><span>{detail.rate.toFixed(1)} packets/s</span><span>{detail.slots} slots</span><span>{detail.nonzero} nonzero</span><span>{Math.max(0, Math.floor((data.sampledAt - detail.lastSeen) / 1000))}s ago</span></div><p className="mt-2 break-all font-mono text-xs text-slate-500">{detail.cid ? `CID ${detail.cid} · ` : ''}{detail.packets} packets received · {detail.status === 'present' ? 'latest received frame' : 'historical frame; not current'}</p><StreamChannelValues key={detail.id} signal={detail}/></div>}
           </div>)}</div></div>)}</div>
         </section>;
       })}{!devices.length && <p className="p-4 text-center text-sm text-slate-400">No DMX streams received yet. A listening socket does not confirm that signals are present.</p>}</div>

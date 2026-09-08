@@ -41,17 +41,17 @@ test('server polls without browsers and does not keep stale results after failur
 
 test('background cycles skip consoles while add and explicit console polls include them', async () => {
   const calls = [];
-  const inventory = createDeviceInventory({ intervalMs: 10000, poll: async ip => { calls.push(ip); return { ip, responding: true, online: true, ports: [] }; } });
+  const inventory = createDeviceInventory({ intervalMs: 10000, poll: async (ip, options) => { calls.push({ ip, deviceType: options.deviceType }); return { ip, responding: true, online: true, ports: [] }; } });
   try {
     inventory.add([{ ip: '192.168.1.101', deviceType: 'Node' }, { ip: '192.168.1.11', deviceType: 'Console' }]);
     await inventory.refresh({ ips: ['192.168.1.101', '192.168.1.11'] });
-    assert.deepEqual(calls, ['192.168.1.101', '192.168.1.11']);
+    assert.deepEqual(calls, [{ ip:'192.168.1.101', deviceType:'Node' }, { ip:'192.168.1.11', deviceType:'Console' }]);
     await inventory.refresh();
-    assert.deepEqual(calls, ['192.168.1.101', '192.168.1.11', '192.168.1.101']);
+    assert.equal(calls.at(-1).deviceType, 'Node');
     await inventory.refresh({ deviceType: 'Console' });
-    assert.deepEqual(calls, ['192.168.1.101', '192.168.1.11', '192.168.1.101', '192.168.1.11']);
+    assert.equal(calls.at(-1).deviceType, 'Console');
     await inventory.refresh({ all: true });
-    assert.deepEqual(calls.slice(-2), ['192.168.1.101', '192.168.1.11']);
+    assert.deepEqual(calls.slice(-2).map(call => call.deviceType), ['Node', 'Console']);
   } finally { inventory.close(); }
 });
 

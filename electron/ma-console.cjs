@@ -42,6 +42,7 @@ async function pollMaConsole(ip, { read = readLanding, metadata = readWebRemoteM
   await read(ip);
   const details = await metadata(ip).catch(() => ({ error: 'Web Remote screen metadata was not readable.' }));
   return { ip, checkedAt: Date.now(), responding: true, online: true, reachabilitySource: 'web', source: 'MA Web Remote', name: `grandMA station ${ip}`, description: 'grandMA console', proplex: false, ports: [], subnetMask: null, firmwareCode: null, mac: '',
+    consoleBrand: 'MA Lighting', consoleFamily: 'grandMA', consoleServicePort: 8080,
     sessionName: details.sessionName || null, showFile: details.showFile || null, sessionStatus: details.sessionStatus || null,
     metadataStatus: details.error || (details.sessionName || details.showFile ? 'Read from the MA Web Remote Network view.' : 'Session and show file were not reported.'),
     report: 'Web Remote responding on TCP 8080', note: 'Active output universes are derived from received sACN and Art-Net.', error: '' };

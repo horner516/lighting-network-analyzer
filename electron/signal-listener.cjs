@@ -45,6 +45,7 @@ function createSignalListener({ universeSpec = process.env.LNA_SACN_UNIVERSES ||
   const protocolBuckets = { 'sACN': [], 'Art-Net': [] };
   const interfaces = Object.entries(networkInterfaces()).flatMap(([name, list]) => (list || []).filter(n => n.family === 'IPv4' && !n.internal).map(n => ({ name, address: n.address })));
   let universes = [], closed = false, droppedSources = 0, configError = '';
+  const observableSacnUniverses = new Set();
   try {
     universes = parseUniverses(universeSpec);
     if (interfaceIp && (!isIPv4(interfaceIp) || !interfaces.some(n => n.address === interfaceIp))) throw new Error('LNA_INTERFACE must be an IPv4 address on an active local adapter.');
@@ -88,7 +89,7 @@ function createSignalListener({ universeSpec = process.env.LNA_SACN_UNIVERSES ||
         socket.bind(p.port, bindAddress, () => {
           p.port = socket.address().port;
           for (const u of groups) {
-            try { socket.addMembership(`239.255.${u >> 8}.${u & 255}`, membership.address); membership.joined++; }
+            try { socket.addMembership(`239.255.${u >> 8}.${u & 255}`, membership.address); membership.joined++; observableSacnUniverses.add(u); }
             catch (e) { membership.failed++; membership.error = e.code || e.message; }
           }
           socket.unref(); resolve(socket);
@@ -108,7 +109,7 @@ function createSignalListener({ universeSpec = process.env.LNA_SACN_UNIVERSES ||
         // exhaust kernel resources, particularly with a VLAN and its parent NIC.
         if (process.platform === 'darwin') {
           for (const u of universes) {
-            try { primary.addMembership(`239.255.${u >> 8}.${u & 255}`, membership.address); membership.joined++; }
+            try { primary.addMembership(`239.255.${u >> 8}.${u & 255}`, membership.address); membership.joined++; observableSacnUniverses.add(u); }
             catch (e) { membership.failed++; membership.error = e.code || e.message; }
           }
           continue;
@@ -132,7 +133,7 @@ function createSignalListener({ universeSpec = process.env.LNA_SACN_UNIVERSES ||
       const status = !available ? 'unavailable' : row.terminated ? 'terminated' : t - row.lastSeen > PRESENT_MS ? 'timed-out' : 'present';
       signals.push({ ...data, status, rate: status === 'present' ? buckets.filter(b => b.second > second - 5).reduce((n, b) => n + b.count, 0) / 5 : 0, nonzero: levels.filter(n => n > 0).length, previewLevels: levels.slice(0, 16) });
     }
-    return { available: true, sampledAt: t, presentTimeoutMs: PRESENT_MS, universeSpec, interfaces, memberships, protocols, signals: signals.sort((a, b) => a.protocol.localeCompare(b.protocol) || a.universe - b.universe || a.ip.localeCompare(b.ip)), droppedSources };
+    return { available: true, sampledAt: t, presentTimeoutMs: PRESENT_MS, universeSpec, subscribedUniverses: [...observableSacnUniverses].sort((a, b) => a - b), interfaces, memberships, protocols, signals: signals.sort((a, b) => a.protocol.localeCompare(b.protocol) || a.universe - b.universe || a.ip.localeCompare(b.ip)), droppedSources };
   }
   function channelValue(protocol, universe, channel) {
     if (!['sACN', 'Art-Net'].includes(protocol) || !Number.isInteger(universe) || universe < (protocol === 'sACN' ? 1 : 0) || universe > (protocol === 'sACN' ? 63999 : 32767) || !Number.isInteger(channel) || channel < 1 || channel > 512) throw new RangeError('Choose a valid protocol, universe and channel (1–512).');
@@ -143,7 +144,20 @@ function createSignalListener({ universeSpec = process.env.LNA_SACN_UNIVERSES ||
     });
     return { available: true, sampledAt: data.sampledAt, protocol, universe, channel, listenerStatus: protocols[protocol].status, subscribed: protocol === 'Art-Net' || universes.includes(universe), streams };
   }
+  function channelRange(protocol, universe, start = 1, count = 16) {
+    if (!['sACN', 'Art-Net'].includes(protocol) || !Number.isInteger(universe) || universe < (protocol === 'sACN' ? 1 : 0) || universe > (protocol === 'sACN' ? 63999 : 32767) || !Number.isInteger(start) || start < 1 || start > 512 || !Number.isInteger(count) || count < 1 || count > 64 || start + count - 1 > 512) throw new RangeError('Choose a valid protocol, universe and channel range within 1–512.');
+    const data = snapshot();
+    const streams = data.signals.filter(s => s.protocol === protocol && s.universe === universe).map(s => {
+      const levels = rows.get(s.id).levels;
+      const values = Array.from({ length: count }, (_, index) => {
+        const value = levels[start + index - 1];
+        return s.status === 'present' && value !== undefined ? value : null;
+      });
+      return { id: s.id, ip: s.ip, cid: s.cid, sourceName: s.sourceName, priority: s.priority, lastSeen: s.lastSeen, status: s.status, slots: s.slots, values };
+    });
+    return { available: true, sampledAt: data.sampledAt, protocol, universe, start, end: start + count - 1, listenerStatus: protocols[protocol].status, subscribed: protocol === 'Art-Net' || universes.includes(universe), streams };
+  }
   function close() { if (closed) return; closed = true; nodePoller.close(); for (const s of sockets) { try { s.close(); } catch {} } for (const p of Object.values(protocols)) p.status = 'stopped'; }
-  return { ready, snapshot, channelValue, pollNode: nodePoller.poll, close, ingest };
+  return { ready, snapshot, channelValue, channelRange, pollNode: nodePoller.poll, close, ingest };
 }
 module.exports = { createSignalListener, decodeSacn, decodeArtNet, parseUniverses };

@@ -7,6 +7,10 @@ test('port colors match the approved protocol palette without claiming output fr
   assert.equal(portAppearance({ ...port, outputProtocol: 'Art-Net' }).text, '#8bc6ff');
   assert.equal(portAppearance(port).liveOutput, false);
   assert.equal(portAppearance({ ...port, active: true }).liveOutput, true);
+  assert.equal(portAppearance({ ...port, active: false }).noData, true);
+  assert.equal(portAppearance({ ...port, active: false }).value, '#ff2f28');
+  assert.equal(portAppearance({ ...port, active: false }).text, '#ff2f28');
+  assert.equal(portAppearance({ ...port, active: false }).line, '#27df2d');
   assert.equal(portAppearance({ ...port, active: true, direction: 'IN' }).liveOutput, false);
   assert.equal(portAppearance({ ...port, error: 'Invalid universe', active: true }).liveOutput, false);
   assert.equal(portAppearance({ ...port, error: 'Invalid universe' }).text, '#ff7068');

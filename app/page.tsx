@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { normalizeIp, restoreManualDevices, savedDevicesKey, type ManualDevice } from '@/lib/manual-devices';
 import { checkLatestRelease, releasePage } from '@/lib/updates';
+import type { SignalSnapshot } from '@/lib/port-signal-status';
 import { version } from '../package.json';
 
 type InventoryResponse = { shared?: boolean; devices?: ManualDevice[]; info?: Record<string, NodeInfo>; busy?: boolean; pollingIp?: string; error?: string };
@@ -23,6 +24,7 @@ export default function Home() {
   const [view, setView] = useState('devices');
   const [deviceList, setDeviceList] = useState<ManualDevice[]>([]);
   const [nodeInfo, setNodeInfo] = useState<Record<string, NodeInfo>>({});
+  const [signalSnapshot, setSignalSnapshot] = useState<SignalSnapshot | null>(null);
   const [pollBusy, setPollBusy] = useState(false);
   const [pollingIp, setPollingIp] = useState('');
   const [adding, setAdding] = useState(false);
@@ -79,6 +81,20 @@ export default function Home() {
       }
     }
     void refresh();
+    return () => { controller.abort(); clearTimeout(timer); };
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout>;
+    async function refreshSignals() {
+      try {
+        const response = await fetch('/api/signals', { cache: 'no-store', signal: controller.signal });
+        if (response.ok) setSignalSnapshot(await response.json() as SignalSnapshot);
+      } catch { if (!controller.signal.aborted) setSignalSnapshot(null); }
+      if (!controller.signal.aborted) timer = setTimeout(refreshSignals, 1000);
+    }
+    void refreshSignals();
     return () => { controller.abort(); clearTimeout(timer); };
   }, []);
 
@@ -190,7 +206,7 @@ export default function Home() {
       </div>
       <TabsContent value="devices">
         {storageError && <p role="alert" className="mb-4 text-sm text-amber-200">{storageError}</p>}
-        <Tabs defaultValue="Node" className="gap-4"><TabsList aria-label="Device type" className="bg-[#1b252c] text-slate-100"><TabsTrigger value="Console" className="px-5">Consoles</TabsTrigger><TabsTrigger value="Node" className="px-5">Nodes</TabsTrigger><TabsTrigger value="Switch" className="px-5">Switches</TabsTrigger></TabsList><TabsContent value="Console"><ConsoleCards devices={deviceList} query={query} info={nodeInfo} pollingIp={pollingIp} pollBusy={pollBusy} onPoll={() => refreshDevices('Console')}/></TabsContent>{(['Node','Switch'] as const).map(type => <TabsContent key={type} value={type}><DeviceCards devices={deviceList} query={query} info={nodeInfo} pollingIp={pollingIp} deviceType={type} pollBusy={pollBusy} onPoll={type === 'Node' ? () => refreshDevices('Node') : undefined} onEditUniverses={type === 'Node' ? updatePortUniverses : undefined}/></TabsContent>)}</Tabs>
+        <Tabs defaultValue="Node" className="gap-4"><TabsList aria-label="Device type" className="bg-[#1b252c] text-slate-100"><TabsTrigger value="Console" className="px-5">Consoles</TabsTrigger><TabsTrigger value="Node" className="px-5">Nodes</TabsTrigger><TabsTrigger value="Switch" className="px-5">Switches</TabsTrigger></TabsList><TabsContent value="Console"><ConsoleCards devices={deviceList} query={query} info={nodeInfo} pollingIp={pollingIp} signals={signalSnapshot?.signals} pollBusy={pollBusy} onPoll={() => refreshDevices('Console')}/></TabsContent>{(['Node','Switch'] as const).map(type => <TabsContent key={type} value={type}><DeviceCards devices={deviceList} query={query} info={nodeInfo} pollingIp={pollingIp} deviceType={type} signals={type === 'Node' ? signalSnapshot : null} pollBusy={pollBusy} onPoll={type === 'Node' ? () => refreshDevices('Node') : undefined} onEditUniverses={type === 'Node' ? updatePortUniverses : undefined}/></TabsContent>)}</Tabs>
       </TabsContent>
       <TabsContent value="signals"><SignalMonitor /></TabsContent>
       <TabsContent value="fixtures"><FixtureWorkspace /></TabsContent>

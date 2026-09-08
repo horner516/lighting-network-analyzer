@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.2 — 2026-09-08
+
+- Expanded Network stream details with a paged channel-value reader. Previous/Next controls and a range slider navigate every DMX channel from 1–512 in 16-channel groups while values continue refreshing live.
+- Added console-brand detection before console-specific polling. MA devices continue through the Web Remote reader; ETC Eos Family devices are identified through their documented OSC TCP service without sending OSC commands.
+- ETC console cards show the detected brand, Eos family, responding OSC service port, and observed sACN/Art-Net universes instead of waiting for MA Web Remote metadata.
+- ProPlex output cards now combine the configured port routing with Lux Link's live receiver. Matching, current network data retains the protocol color; an observable universe with no current stream shows its universe and **NO DATA** in red, matching ProPlex Manager behavior. Unsubscribed or unavailable receiver paths remain neutral rather than reporting a false fault.
+
 ## 0.3.1 — 2026-09-08
 
 - Replaced the active Fixtures/MVR controls with a future-feature notice. The planned importer will explicitly mark incomplete MVR files and list each fixture with a missing or unusable GDTF profile, DMX mode or patch; fixture output remains disabled in this build.

@@ -52,3 +52,15 @@ test('unsupported devices report unavailable without Art-Net discovery; invalid 
   await assert.rejects(poller.poll('127.0.0.1'), RangeError);
   await assert.rejects(readJson('10.0.26.108', '/write'), /Unsupported/);
 });
+
+test('console polling detects MA first and then ETC without probing node APIs', async () => {
+  let reads = 0, maCalls = 0, etcCalls = 0;
+  const poller = createDevicePoller({
+    read: async () => { reads++; throw Error('Node API must not be used'); },
+    maPoll: async () => { maCalls++; throw Error('Not MA'); },
+    etcPoll: async ip => { etcCalls++; return { ip, responding: true, consoleBrand: 'ETC', ports: [] }; },
+  });
+  const result = await poller.poll('192.168.1.5', { deviceType: 'Console' });
+  assert.equal(result.consoleBrand, 'ETC');
+  assert.equal(reads, 0); assert.equal(maCalls, 1); assert.equal(etcCalls, 1);
+});

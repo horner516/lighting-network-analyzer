@@ -102,6 +102,22 @@ test('channel readings preserve source identity, zero, channel 512, missing slot
     assert.equal(listener.channelValue('sACN', 51, 512).streams[0].value, null);
   } finally { listener.close(); }
 });
+test('channel ranges page through all 512 slots without enlarging signal snapshots', async () => {
+  const listener = createSignalListener(opts); await listener.ready;
+  try {
+    const full = sacn({ slots: 512 });
+    full[126 + 15] = 16; full[126 + 16] = 17; full[126 + 511] = 212;
+    listener.ingest('sACN', full, { address: '127.0.0.1' });
+    const first = listener.channelRange('sACN', 51, 1, 16).streams[0];
+    const second = listener.channelRange('sACN', 51, 17, 16).streams[0];
+    const last = listener.channelRange('sACN', 51, 497, 16).streams[0];
+    assert.equal(first.values[15], 16);
+    assert.equal(second.values[0], 17);
+    assert.equal(last.values[15], 212);
+    assert.equal(listener.snapshot().signals[0].previewLevels.length, 16);
+    for (const args of [['sACN', 51, 0, 16], ['sACN', 51, 513, 1], ['sACN', 51, 500, 16], ['sACN', 51, 1, 65]]) assert.throws(() => listener.channelRange(...args), RangeError);
+  } finally { listener.close(); }
+});
 test('peak rates are server-owned, per protocol, retained after idle and reset on restart', async () => {
   let time = 10000;
   const listener = createSignalListener({ ...opts, now: () => time }); await listener.ready;

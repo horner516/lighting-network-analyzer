@@ -2,6 +2,7 @@ const http = require('node:http');
 const { validTarget } = require('./node-poller.cjs');
 const { pollProplex, updatePortUniverses: updateProplexPortUniverses } = require('./proplex-web.cjs');
 const { pollMaConsole } = require('./ma-console.cjs');
+const { pollEtcConsole } = require('./etc-console.cjs');
 const { createReachabilityProbe } = require('./reachability.cjs');
 
 // Read endpoints used by the NETRON EN12 V2.9.2 web monitor. Never call
@@ -68,12 +69,24 @@ function normalizeNetron(ip, settings, identity, network, rawPorts, warnings = [
   };
 }
 
-function createDevicePoller({ read = readJson, proplexPoll = pollProplex, proplexUpdate = updateProplexPortUniverses, maPoll = pollMaConsole, ping = createReachabilityProbe(), now = Date.now } = {}) {
+function createDevicePoller({ read = readJson, proplexPoll = pollProplex, proplexUpdate = updateProplexPortUniverses, maPoll = pollMaConsole, etcPoll = pollEtcConsole, ping = createReachabilityProbe(), now = Date.now } = {}) {
   const pending = new Map(), cache = new Map();
+  async function consolePoll(ip) {
+    try { return await maPoll(ip); }
+    catch {
+      try { return await etcPoll(ip); }
+      catch {
+        const online = await ping(ip).catch(() => false);
+        return { ip, checkedAt: now(), responding: false, online, reachabilitySource: online ? 'ping' : 'none', source: 'Console detection', name: '', description: '', consoleBrand: 'Unknown',
+          proplex: false, ports: [], subnetMask: null, firmwareCode: null, mac: '', report: '', metadataStatus: 'No supported console service was detected.',
+          note: 'Lux Link checked MA Web Remote and ETC Eos OSC without sending control commands.',
+          error: online ? 'Console answered ping, but its manufacturer could not be identified.' : 'Console detection and four ping attempts failed.' };
+      }
+    }
+  }
   async function fallback(ip) {
     try { return await proplexPoll(ip); }
     catch {
-      try { return await maPoll(ip); } catch {}
       const online = await ping(ip).catch(() => false);
       return { ip, checkedAt: now(), responding: false, online, reachabilitySource: online ? 'ping' : 'none', source: 'Device web/API polling', name: '', description: '',
         proplex: false, ports: [], subnetMask: null, firmwareCode: null, mac: '', report: '',
@@ -81,7 +94,8 @@ function createDevicePoller({ read = readJson, proplexPoll = pollProplex, prople
         error: online ? 'Device answered ping, but its web/API format is unavailable or unsupported.' : 'Device web/API polling and four ping attempts failed.' };
     }
   }
-  async function collect(ip) {
+  async function collect(ip, deviceType = '') {
+    if (deviceType === 'Console') return consolePoll(ip);
     let settings;
     try { settings = await read(ip, '/Setting.json'); } catch { return fallback(ip); }
     if (!/^NETRON\s+\S/i.test(str(settings?.DeviceType))) return fallback(ip);
@@ -95,27 +109,29 @@ function createDevicePoller({ read = readJson, proplexPoll = pollProplex, prople
     if (!Array.isArray(values[2]) && values[2] !== null) warnings.push('Unsupported port response.');
     return normalizeNetron(ip, settings, ...values, warnings);
   }
-  function poll(ip) {
+  function poll(ip, { deviceType = '' } = {}) {
     if (!validTarget(ip)) return Promise.reject(new RangeError('Use a private LAN or 2.x lighting-network IPv4 host address.'));
-    if (pending.has(ip)) return pending.get(ip);
-    const prior = cache.get(ip);
+    const key = `${deviceType || 'Device'}:${ip}`;
+    if (pending.has(key)) return pending.get(key);
+    const prior = cache.get(key);
     if (prior && now() - prior.at < 5000) return Promise.resolve(prior.value);
     if (pending.size >= 4) return Promise.reject(new Error('Other nodes are being polled. Try again shortly.'));
-    const result = collect(ip).then(value => {
-      cache.set(ip, { at: now(), value });
+    const result = collect(ip, deviceType).then(value => {
+      cache.set(key, { at: now(), value });
       if (cache.size > 256) cache.delete(cache.keys().next().value);
       return value;
-    }).finally(() => pending.delete(ip));
-    pending.set(ip, result);
+    }).finally(() => pending.delete(key));
+    pending.set(key, result);
     return result;
   }
   async function updatePortUniverses(ip, updates) {
     if (!validTarget(ip)) throw new RangeError('Use a private LAN or 2.x lighting-network IPv4 host address.');
-    if (pending.has(ip)) await pending.get(ip);
+    const key = `Device:${ip}`;
+    if (pending.has(key)) await pending.get(key);
     await proplexUpdate(ip, updates);
-    cache.delete(ip);
+    cache.delete(key);
     const value = await collect(ip);
-    cache.set(ip, { at: now(), value });
+    cache.set(key, { at: now(), value });
     return value;
   }
   return { poll, updatePortUniverses };
