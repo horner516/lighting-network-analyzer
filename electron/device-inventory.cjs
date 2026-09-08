@@ -82,6 +82,11 @@ function createDeviceInventory({ file = null, poll, intervalMs = 15000 }) {
     for (const ip of Object.keys(info)) if (!order.includes(ip)) delete info[ip];
     return snapshot();
   }
-  return { snapshot, add, layout, refresh, start: () => { void refresh(); }, close: () => { stopped = true; clearTimeout(timer); } };
+  function updateInfo(ip, value) {
+    if (!devices.some(device => device.ip === ip)) throw new RangeError('Add this node to the shared device list before editing it.');
+    info[ip] = value;
+    return snapshot();
+  }
+  return { snapshot, add, layout, refresh, updateInfo, start: () => { void refresh(); }, close: () => { stopped = true; clearTimeout(timer); } };
 }
 module.exports = { createDeviceInventory, deviceEntry };

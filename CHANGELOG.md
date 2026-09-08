@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.1 — 2026-09-08
+
+- Replaced the active Fixtures/MVR controls with a future-feature notice. The planned importer will explicitly mark incomplete MVR files and list each fixture with a missing or unusable GDTF profile, DMX mode or patch; fixture output remains disabled in this build.
+- Added opt-in universe editing for supported ProPlex output ports. Each node has an **Edit ports** control, port fields follow the physical layout and keyboard tab order, and changes are staged until **Save changes** is pressed.
+- ProPlex universe writes preserve the node's reported port directions, sACN priorities and RDM selections, reject input-port edits, and verify the returned configuration before reporting success.
+
 ## 0.3.0 — 2026-09-06
 
 - Added a top-level **Fixtures** workspace with server-owned MVR import. Lux Link reads `GeneralSceneDescription.xml`, patch addresses and embedded GDTF definitions, persists the parsed rig, groups fixtures by manufacturer, model and mode, and shows unsupported profiles without guessing channel mappings.

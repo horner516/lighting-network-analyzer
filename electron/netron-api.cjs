@@ -1,6 +1,6 @@
 const http = require('node:http');
 const { validTarget } = require('./node-poller.cjs');
-const { pollProplex } = require('./proplex-web.cjs');
+const { pollProplex, updatePortUniverses: updateProplexPortUniverses } = require('./proplex-web.cjs');
 const { pollMaConsole } = require('./ma-console.cjs');
 const { createReachabilityProbe } = require('./reachability.cjs');
 
@@ -68,7 +68,7 @@ function normalizeNetron(ip, settings, identity, network, rawPorts, warnings = [
   };
 }
 
-function createDevicePoller({ read = readJson, proplexPoll = pollProplex, maPoll = pollMaConsole, ping = createReachabilityProbe(), now = Date.now } = {}) {
+function createDevicePoller({ read = readJson, proplexPoll = pollProplex, proplexUpdate = updateProplexPortUniverses, maPoll = pollMaConsole, ping = createReachabilityProbe(), now = Date.now } = {}) {
   const pending = new Map(), cache = new Map();
   async function fallback(ip) {
     try { return await proplexPoll(ip); }
@@ -109,6 +109,15 @@ function createDevicePoller({ read = readJson, proplexPoll = pollProplex, maPoll
     pending.set(ip, result);
     return result;
   }
-  return { poll };
+  async function updatePortUniverses(ip, updates) {
+    if (!validTarget(ip)) throw new RangeError('Use a private LAN or 2.x lighting-network IPv4 host address.');
+    if (pending.has(ip)) await pending.get(ip);
+    await proplexUpdate(ip, updates);
+    cache.delete(ip);
+    const value = await collect(ip);
+    cache.set(ip, { at: now(), value });
+    return value;
+  }
+  return { poll, updatePortUniverses };
 }
 module.exports = { readJson, normalizeNetron, createDevicePoller };

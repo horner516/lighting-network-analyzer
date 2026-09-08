@@ -4,8 +4,6 @@ const path = require('node:path');
 const { networkInterfaces } = require('node:os');
 const { createSignalListener } = require('./signal-listener.cjs');
 const { createSignalTransmitter } = require('./signal-transmitter.cjs');
-const { createFixtureOutput } = require('./fixture-output.cjs');
-const { createFixtureLibrary } = require('./mvr-fixtures.cjs');
 const { createDevicePoller } = require('./netron-api.cjs');
 const { createDeviceInventory } = require('./device-inventory.cjs');
 const { validTarget } = require('./node-poller.cjs');
@@ -21,25 +19,24 @@ function addresses(port, host) {
   return { port, urls: ips.map(ip => `http://${ip.includes(':') ? `[${ip}]` : ip}:${port}`) };
 }
 
-async function startLanServer({ root, preferredPort = 47652, host = '0.0.0.0', listenerOptions = {}, deviceStorePath = null, fixtureStorePath = null, pollDevice, inventoryIntervalMs = 15000, releaseRequest }) {
+async function startLanServer({ root, preferredPort = 47652, host = '0.0.0.0', listenerOptions = {}, deviceStorePath = null, pollDevice, updatePortUniverses, inventoryIntervalMs = 15000, releaseRequest }) {
   if (!Number.isInteger(preferredPort) || preferredPort < 1024 || preferredPort > 65535) throw new Error('Server port must be an integer from 1024 to 65535.');
   const base = path.resolve(root);
   if (!fs.existsSync(path.join(base, 'index.html'))) throw new Error('The bundled dashboard is missing. Reinstall the app.');
-  let listener, transmitter, fixtureOutput, selectedInterface = listenerOptions.interfaceIp || process.env.LNA_INTERFACE || '';
+  let listener, transmitter, selectedInterface = listenerOptions.interfaceIp || process.env.LNA_INTERFACE || '';
   const checkRelease = createReleaseChecker(version, releaseRequest);
   const devicePoller = createDevicePoller();
   const inventory = createDeviceInventory({ file: deviceStorePath, poll: pollDevice || (ip => devicePoller.poll(ip)), intervalMs: inventoryIntervalMs });
-  const fixtureLibrary = createFixtureLibrary({ file: fixtureStorePath || (deviceStorePath ? path.join(path.dirname(deviceStorePath), 'fixtures.json') : null) });
+  const updateNodePorts = updatePortUniverses || ((ip, updates) => devicePoller.updatePortUniverses(ip, updates));
   function availableInterfaces() {
     return Object.entries(networkInterfaces()).flatMap(([name, list]) => (list || []).filter(item => item.family === 'IPv4' && !item.internal).map(item => ({ name, address: item.address })));
   }
   function networkSnapshot() { return { available: true, selected: selectedInterface, interfaces: availableInterfaces(), transmitterEnabled: transmitter?.snapshot().enabled === true }; }
   async function startNetworking(address) {
-    listener?.close(); transmitter?.close(); fixtureOutput?.close();
+    listener?.close(); transmitter?.close();
     selectedInterface = address;
     listener = createSignalListener({ ...listenerOptions, interfaceIp: address, ...(address ? { bindAddress: address } : {}) });
     transmitter = createSignalTransmitter({ interfaceIp: address });
-    fixtureOutput = createFixtureOutput({ interfaceIp: address, getFixtures: () => fixtureLibrary.fixtures() });
     await listener.ready;
   }
   async function selectNetworkInterface(address) {
@@ -53,25 +50,7 @@ async function startLanServer({ root, preferredPort = 47652, host = '0.0.0.0', l
     try { pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname); }
     catch { res.writeHead(400); res.end(); return; }
     const foreignOrigin = req.headers['sec-fetch-site'] === 'cross-site' || (req.headers.origin && req.headers.origin !== `http://${req.headers.host}`);
-    if (req.method === 'POST' && pathname === '/api/fixtures/import') {
-      res.setHeader('Content-Type', 'application/json');
-      if (foreignOrigin) { res.writeHead(403); res.end('{}'); return; }
-      if (!/^application\/octet-stream(?:;|$)/i.test(req.headers['content-type'] || '')) { res.writeHead(415); res.end(JSON.stringify({ error: 'Upload an MVR file.' })); return; }
-      let size = 0, oversized = false; const chunks = [];
-      req.on('data', chunk => { size += chunk.length; if (size > 100 * 1024 * 1024) oversized = true; else chunks.push(chunk); });
-      req.on('end', () => {
-        if (oversized) { res.writeHead(413); res.end(JSON.stringify({ error: 'Choose an MVR file smaller than 100 MB.' })); return; }
-        try {
-          fixtureOutput.stop();
-          const rawName = Array.isArray(req.headers['x-lux-link-filename']) ? req.headers['x-lux-link-filename'][0] : req.headers['x-lux-link-filename'];
-          const filename = rawName ? decodeURIComponent(rawName) : 'Imported rig.mvr';
-          const result = fixtureLibrary.import(Buffer.concat(chunks), filename);
-          res.end(JSON.stringify({ ...result, output: fixtureOutput.snapshot() }));
-        } catch (error) { res.writeHead(error instanceof RangeError || error instanceof SyntaxError ? 400 : 500); res.end(JSON.stringify({ error: error.message })); }
-      });
-      return;
-    }
-    if (req.method === 'POST' && ['/api/devices', '/api/devices/refresh', '/api/devices/layout', '/api/transmitter', '/api/network-interface', '/api/fixtures/test'].includes(pathname)) {
+    if (req.method === 'POST' && ['/api/devices', '/api/devices/refresh', '/api/devices/layout', '/api/devices/ports', '/api/transmitter', '/api/network-interface'].includes(pathname)) {
       res.setHeader('Content-Type', 'application/json');
       if (foreignOrigin) { res.writeHead(403); res.end('{}'); return; }
       if (!/^application\/json(?:;|$)/i.test(req.headers['content-type'] || '')) { res.writeHead(415); res.end('{}'); return; }
@@ -82,8 +61,15 @@ async function startLanServer({ root, preferredPort = 47652, host = '0.0.0.0', l
         try {
           const body = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
           if (pathname === '/api/transmitter') { res.end(JSON.stringify(transmitter.update(body))); return; }
-          if (pathname === '/api/fixtures/test') { res.end(JSON.stringify({ ...fixtureLibrary.snapshot(), output: fixtureOutput.update(body) })); return; }
           if (pathname === '/api/network-interface') { await selectNetworkInterface(body.address); res.end(JSON.stringify(networkSnapshot())); return; }
+          if (pathname === '/api/devices/ports') {
+            const configured = inventory.snapshot().devices.find(device => device.ip === body.ip);
+            if (!configured || configured.deviceType !== 'Node') throw new RangeError('Add this address as a node before editing its ports.');
+            const current = inventory.snapshot().info[body.ip];
+            if (current && current.universeEditing !== 'proplex-web') throw new RangeError('Universe editing is not supported for this node.');
+            const updated = await updateNodePorts(body.ip, body.updates);
+            res.end(JSON.stringify(inventory.updateInfo(body.ip, updated))); return;
+          }
           if (pathname === '/api/devices') inventory.add(body.devices || [body], { legacyImport: body.legacyImport === true });
           else if (pathname === '/api/devices/layout') inventory.layout(body);
           else {
@@ -121,11 +107,6 @@ async function startLanServer({ root, preferredPort = 47652, host = '0.0.0.0', l
     if (pathname === '/api/transmitter') {
       res.setHeader('Content-Type', 'application/json');
       res.end(req.method === 'HEAD' ? undefined : JSON.stringify(transmitter ? transmitter.snapshot() : { available: false }));
-      return;
-    }
-    if (pathname === '/api/fixtures') {
-      res.setHeader('Content-Type', 'application/json');
-      res.end(req.method === 'HEAD' ? undefined : JSON.stringify({ ...fixtureLibrary.snapshot(), output: fixtureOutput ? fixtureOutput.snapshot() : { available: false } }));
       return;
     }
     if (pathname === '/api/network-interface') {
@@ -185,7 +166,7 @@ async function startLanServer({ root, preferredPort = 47652, host = '0.0.0.0', l
       const localHost = host === '0.0.0.0' ? '127.0.0.1' : host === '::' ? '[::1]' : host.includes(':') ? `[${host}]` : host;
       await startNetworking(selectedInterface);
       inventory.start();
-      server.on('close', () => { inventory.close(); listener.close(); transmitter.close(); fixtureOutput.close(); });
+      server.on('close', () => { inventory.close(); listener.close(); transmitter.close(); });
       return { server, port, url: `http://${localHost}:${port}`, info: () => addresses(port, host) };
     } catch (error) {
       if (error.code !== 'EADDRINUSE') throw error;

@@ -1,6 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { normalizeProplex, readStatus } = require('../electron/proplex-web.cjs');
+const { normalizeProplex, readStatus, parsePortRouting, updatePortUniverses } = require('../electron/proplex-web.cjs');
 const { createDevicePoller } = require('../electron/netron-api.cjs');
 const { protocolSettings, pollProplex, readPage } = require('../electron/proplex-web.cjs');
 function fixture(type = '16U16IO') {
@@ -10,6 +10,11 @@ function fixture(type = '16U16IO') {
     <b>Port Routing</b><table><tr><td>Decimal (0..32767)</td></tr>
     ${Array.from({length:16}, (_,i)=>`<tr><td>${String.fromCharCode(65+i)}</td><td>${i===1?'Input':'Output'}</td><td></td><td>${i===11?0:32+i}</td><td></td><td>${i===0?'On':'Off'}</td><td></td><td>100</td></tr>`).join('')}</table>
     <b>Protocol</b>${field('Protocol','sACN')}${field('DMX Rate','30Hz')}${field('Master','Version 2.36')}`;
+}
+function routingFixture(universes = [41, 42]) {
+  return `<img src="proplex_logo.png"><form method="post" action="port_routing.htm">
+    ${universes.map((universe, index) => { const prefix=String(index).padStart(2,'0'); return `<select name="${prefix}dir"><option value="in">Input</option><option value="out" selected>Output</option></select><input name="${prefix}univ" value="${universe}"><input name="${prefix}rdm" type="checkbox" ${index ? '' : 'checked'}><input name="${prefix}pri" value="100">`; }).join('')}
+  </form>`;
 }
 test('reads ProPlex web status without treating configuration as signal or health', () => {
   const d = normalizeProplex('10.0.26.106', fixture());
@@ -65,4 +70,19 @@ test('selected protocol setup checkboxes override status text using GET page rea
   assert.deepEqual(calls, ['/status.htm','/protocol_setup.htm']);
   assert.equal(d.ports[0].outputProtocol, 'sACN'); assert.equal(d.protocolSource, 'protocol_setup.htm');
   await assert.rejects(readPage('10.0.26.105','/firmware_upgrade.htm'), RangeError);
+});
+
+test('ProPlex universe editor preserves every routing field and verifies the response', async () => {
+  assert.deepEqual(parsePortRouting(routingFixture()).map(({index,direction,universe,priority,rdm}) => ({index,direction,universe,priority,rdm})), [
+    { index:0, direction:'out', universe:41, priority:100, rdm:true }, { index:1, direction:'out', universe:42, priority:100, rdm:false },
+  ]);
+  let submitted = '';
+  const result = await updatePortUniverses('10.0.26.105', [{ index:1, universe:99 }], {
+    read: async () => routingFixture(),
+    submit: async (ip, body) => { submitted = body; assert.equal(ip, '10.0.26.105'); return routingFixture([41,99]); },
+  });
+  const form = new URLSearchParams(submitted);
+  assert.equal(form.get('00univ'),'41'); assert.equal(form.get('00rdm'),'on'); assert.equal(form.get('00pri'),'100');
+  assert.equal(form.get('01univ'),'99'); assert.equal(form.has('01rdm'),false); assert.deepEqual(result.updated,[{index:1,universe:99}]);
+  await assert.rejects(updatePortUniverses('10.0.26.105', [{index:0,universe:32768}], { read:async()=>routingFixture() }), /0 to 32767/);
 });

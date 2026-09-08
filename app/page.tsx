@@ -92,6 +92,10 @@ export default function Home() {
     catch (error) { setStorageError(error instanceof Error ? error.message : 'Unable to refresh devices.'); }
   }
 
+  async function updatePortUniverses(ip: string, updates: { index: number; universe: number }[]) {
+    await inventoryRequest('/api/devices/ports', { ip, updates });
+  }
+
   useEffect(() => {
     setServerUrl(window.location.origin);
     const controller = new AbortController();
@@ -186,7 +190,7 @@ export default function Home() {
       </div>
       <TabsContent value="devices">
         {storageError && <p role="alert" className="mb-4 text-sm text-amber-200">{storageError}</p>}
-        <Tabs defaultValue="Node" className="gap-4"><TabsList aria-label="Device type" className="bg-[#1b252c] text-slate-100"><TabsTrigger value="Console" className="px-5">Consoles</TabsTrigger><TabsTrigger value="Node" className="px-5">Nodes</TabsTrigger><TabsTrigger value="Switch" className="px-5">Switches</TabsTrigger></TabsList><TabsContent value="Console"><ConsoleCards devices={deviceList} query={query} info={nodeInfo} pollingIp={pollingIp} pollBusy={pollBusy} onPoll={() => refreshDevices('Console')}/></TabsContent>{(['Node','Switch'] as const).map(type => <TabsContent key={type} value={type}><DeviceCards devices={deviceList} query={query} info={nodeInfo} pollingIp={pollingIp} deviceType={type} pollBusy={pollBusy} onPoll={type === 'Node' ? () => refreshDevices('Node') : undefined}/></TabsContent>)}</Tabs>
+        <Tabs defaultValue="Node" className="gap-4"><TabsList aria-label="Device type" className="bg-[#1b252c] text-slate-100"><TabsTrigger value="Console" className="px-5">Consoles</TabsTrigger><TabsTrigger value="Node" className="px-5">Nodes</TabsTrigger><TabsTrigger value="Switch" className="px-5">Switches</TabsTrigger></TabsList><TabsContent value="Console"><ConsoleCards devices={deviceList} query={query} info={nodeInfo} pollingIp={pollingIp} pollBusy={pollBusy} onPoll={() => refreshDevices('Console')}/></TabsContent>{(['Node','Switch'] as const).map(type => <TabsContent key={type} value={type}><DeviceCards devices={deviceList} query={query} info={nodeInfo} pollingIp={pollingIp} deviceType={type} pollBusy={pollBusy} onPoll={type === 'Node' ? () => refreshDevices('Node') : undefined} onEditUniverses={type === 'Node' ? updatePortUniverses : undefined}/></TabsContent>)}</Tabs>
       </TabsContent>
       <TabsContent value="signals"><SignalMonitor /></TabsContent>
       <TabsContent value="fixtures"><FixtureWorkspace /></TabsContent>

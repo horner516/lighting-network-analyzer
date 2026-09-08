@@ -1,7 +1,5 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
 const { parseMvr, parseAddress, groupFixtures } = require('../electron/mvr-fixtures.cjs');
 const { buildFixtureLevels, createFixtureOutput } = require('../electron/fixture-output.cjs');
@@ -83,20 +81,14 @@ test('sACN fixture stop sends three stream-terminated blackout frames per univer
   output.close();
 });
 
-test('LAN fixture API imports one shared MVR rig and preserves it across restart', async () => {
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'lux-link-mvr-'));
-  const options = { root:path.join(__dirname, '..', 'desktop-web'), host:'127.0.0.1', preferredPort:49120, fixtureStorePath:path.join(directory, 'fixtures.json'), listenerOptions:{ports:{sacn:0,artnet:0},bindAddress:'127.0.0.1',joinMulticast:false} };
-  let lan = await startLanServer(options);
+test('LAN fixture APIs remain disabled while the fixture workspace is deferred', async () => {
+  const lan = await startLanServer({ root:path.join(__dirname, '..', 'desktop-web'), host:'127.0.0.1', preferredPort:49120, listenerOptions:{ports:{sacn:0,artnet:0},bindAddress:'127.0.0.1',joinMulticast:false} });
   try {
     const imported = await fetch(lan.url + '/api/fixtures/import', { method:'POST', headers:{'Content-Type':'application/octet-stream','X-Lux-Link-Filename':encodeURIComponent('Show.mvr')}, body:mvr });
-    assert.equal(imported.status, 200); assert.equal((await imported.json()).rig.groups[0].count, 2);
-    assert.equal((await fetch(lan.url + '/api/fixtures/import', {method:'POST',headers:{Origin:'https://other.example','Content-Type':'application/octet-stream'},body:mvr})).status, 403);
-    const stopped = await fetch(lan.url + '/api/fixtures/test', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({protocol:'Art-Net',priority:80,groups:[],tests:{}})}).then(response => response.json());
-    assert.equal(stopped.output.enabled, false); assert.match(stopped.output.priorityTransport, /no priority field/);
+    assert.equal(imported.status, 405);
+    assert.equal((await fetch(lan.url + '/api/fixtures/test', {method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})).status, 405);
+    assert.equal((await fetch(lan.url + '/api/fixtures')).status, 404);
   } finally { lan.server.closeAllConnections(); await new Promise(resolve => lan.server.close(resolve)); }
-  lan = await startLanServer({ ...options, preferredPort:49121 });
-  try { const saved = await fetch(lan.url + '/api/fixtures').then(response => response.json()); assert.equal(saved.rig.fixtures.length, 2); }
-  finally { lan.server.closeAllConnections(); await new Promise(resolve => lan.server.close(resolve)); fs.rmSync(directory, {recursive:true,force:true}); }
 });
 
 module.exports = { mvr };

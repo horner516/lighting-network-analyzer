@@ -29,7 +29,14 @@ cp public/app-icon.icns public/app-icon.png "$resources/"
 cp "$node_binary" "$resources/node"
 cp scripts/native-server.cjs "$resources/server.cjs"
 cp package.json "$resources/package.json"
-cp -R electron lib "$resources/"
+mkdir -p "$resources/electron" "$resources/lib"
+for source in electron/*.cjs; do
+  case "${source:t}" in
+    fixture-output.cjs|mvr-fixtures.cjs) continue ;;
+  esac
+  cp "$source" "$resources/electron/"
+done
+cp -R lib/. "$resources/lib/"
 cp -R desktop-web/. "$resources/dashboard/"
 cp native-mac/MAWebRemoteReader-Info.plist "$reader_app/Contents/Info.plist"
 chmod 755 "$app/Contents/MacOS/Lux Link" "$resources/node" "$reader_app/Contents/MacOS/MA Web Remote Reader"

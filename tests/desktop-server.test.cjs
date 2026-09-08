@@ -71,3 +71,17 @@ test('LAN server binds all IPv4 interfaces and advertises non-loopback addresses
     assert.equal((await fetch(lan.url)).status, 200);
   } finally { lan.server.closeAllConnections(); await new Promise(resolve => lan.server.close(resolve)); }
 });
+
+test('configured nodes can update output universes through the guarded server endpoint', async () => {
+  let request;
+  const node = { ip:'10.0.26.105', checkedAt:Date.now(), responding:true, online:true, source:'ProPlex web monitor', name:'Test', description:'IQ Two', proplex:true, universeEditing:'proplex-web', ports:[], subnetMask:null, firmwareCode:null, mac:'', report:'', note:'', error:'' };
+  const lan = await startLanServer({ root, host:'127.0.0.1', preferredPort:48832, pollDevice:async()=>node,
+    updatePortUniverses:async (ip, updates) => { request={ip,updates}; return node; }, listenerOptions:{ports:{sacn:0,artnet:0},bindAddress:'127.0.0.1',joinMulticast:false} });
+  try {
+    await fetch(lan.url+'/api/devices',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ip:'10.0.26.105',deviceType:'Node'})});
+    const response = await fetch(lan.url+'/api/devices/ports',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ip:'10.0.26.105',updates:[{index:14,universe:55},{index:15,universe:56}]})});
+    assert.equal(response.status,200); assert.deepEqual(request,{ip:'10.0.26.105',updates:[{index:14,universe:55},{index:15,universe:56}]});
+    assert.equal((await response.json()).info['10.0.26.105'].universeEditing,'proplex-web');
+    assert.equal((await fetch(lan.url+'/api/devices/ports',{method:'POST',headers:{Origin:'https://other.example','Content-Type':'application/json'},body:'{}'})).status,403);
+  } finally { lan.server.closeAllConnections(); await new Promise(resolve => lan.server.close(resolve)); }
+});

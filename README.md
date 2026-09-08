@@ -4,19 +4,19 @@ Standalone desktop and web dashboard for monitoring lighting network devices (sA
 
 ## Downloads
 
-**Version 0.3.0:** MVR fixture import, embedded GDTF mapping, fixture-type grouping, and multi-universe sACN/Art-Net fixture tests in the native Apple-silicon menu-bar app.
+**Version 0.3.1:** verified ProPlex output-universe editing with physical port order, plus a future-feature Fixtures workspace. MVR upload and fixture output are intentionally disabled in this release.
 
 The header **Layout** button opens an IP-address list. Drag the grips (mouse or touch), or use the arrow controls, to arrange dashboard cards. Delete marks a device for removal; **Undo deletions** or **Cancel** can reverse draft changes. **Save layout** applies the order and removals server-wide. Removed nodes stop being polled and may be added again by IP. Concurrent edits are rejected if the server list changed while the editor was open. After the first saved layout, automatic imports from legacy browser lists are disabled to prevent deleted devices from reappearing.
 
 All browsers opening the same LAN server share its device list. The Mac host saves it as `devices.json` in `~/Library/Application Support/lighting-network-analyzer`; the source-only launcher uses `~/.lux-link/devices.json` (override with `LNA_DEVICE_STORE`). Browser-local entries are imported once when that browser opens the updated server. Run one server on the lighting network and have every viewer use that server's address. The dashboard has no authentication: only trusted LAN clients should be able to access it, including its shared inventory and transmitter controls.
 
-The ProPlex reader uses read-only GET requests for `status.htm` and `protocol_setup.htm`. Selected `ArtNetEnabled` and `sACNEnabled` controls determine configured protocol, including dual mode; no forms are submitted. Green/blue accents identify protocol, not proof of DMX output. The native Mac app uses its menu-bar icon with no Dock window and offers **Open Browser**, update checks and Quit.
+The ProPlex reader uses GET requests for `status.htm`, `protocol_setup.htm` and, when editing is requested, `port_routing.htm`. Selected `ArtNetEnabled` and `sACNEnabled` controls determine configured protocol, including dual mode. No settings are changed during normal polling. Green/blue accents identify protocol, not proof of DMX output. The native Mac app uses its menu-bar icon with no Dock window and offers **Open Browser**, update checks and Quit.
 
 The installer includes the app and its LAN server. **No Node.js or developer tools are required.**
 
 | Platform | Download | Compatibility |
 | --- | --- | --- |
-| macOS | [Download Mac installer](https://github.com/horner516/lighting-network-analyzer/releases/download/v0.3.0/Lux-Link-0.3.0-mac-arm64.dmg) | Apple silicon (M1 or newer), macOS 13+ |
+| macOS | [Download Mac installer](https://github.com/horner516/lighting-network-analyzer/releases/download/v0.3.1/Lux-Link-0.3.1-mac-arm64.dmg) | Apple silicon (M1 or newer), macOS 13+ |
 
 See [all releases and checksums](https://github.com/horner516/lighting-network-analyzer/releases). GitHub's automatic **Source code** downloads are not installable apps.
 
@@ -30,7 +30,7 @@ Saved nodes and switches are polled through their live web/API interface when th
 
 If every supported web/API request fails, Lux Link runs four ICMP ping attempts one second apart. A reply shows **Device online** while explaining that device data is unavailable; four failed replies show **Device offline**. A web/API response also counts as online. Ping is used only as the fallback reachability check and does not provide configuration or prove lighting-data flow.
 
-ProPlex 16-port cards use two rows of eight; NETRON EN12 uses one row of twelve. Six-port ProPlex cards use two rows of three and eight-port cards use one row. Click a port for read-only details.
+ProPlex 16-port cards use two rows of eight; NETRON EN12 uses one row of twelve. Six-port ProPlex cards use two rows of three and eight-port cards use one row. Click a port for details. On supported ProPlex cards, **Edit ports** replaces output-universe labels with number fields in physical port order; press Tab to move to the next port, then save once to apply the staged changes.
 
 ### NETRON web API
 
@@ -38,13 +38,13 @@ The local app detects NETRON devices through their web-monitor JSON API and read
 
 Global RDM processing and per-port RDM must both be enabled for the card to show RDM on. Art-Net tile universes follow the device web monitor's numbering preference; native addresses are preserved in port details. Configured frame rate is not measured traffic. Failed optional endpoints produce partial information with an explicit warning. Non-NETRON devices are checked for a supported ProPlex web monitor; unsupported devices show polling unavailable.
 
-Added devices appear as compact port cards. **Poll Nodes** refreshes NETRON configuration through its web API. ProPlex IQ Two configuration comes from read-only `status.htm` and `protocol_setup.htm` pages. When neither web interface is supported/reachable, the card shows polling unavailable. No configuration or lighting output is sent. Polling starts with the server and when an IP is added; requests run sequentially in one shared background cycle.
+Added devices appear as compact port cards. **Poll Nodes** refreshes NETRON configuration through its web API. ProPlex IQ Two configuration comes from `status.htm`, `protocol_setup.htm` and `port_routing.htm`. When neither web interface is supported/reachable, the card shows polling unavailable. Polling itself never changes configuration or sends lighting output. An explicit **Save changes** in port edit mode submits only the requested universe changes while preserving the node's other reported port settings. Polling starts with the server and when an IP is added; requests run sequentially in one shared background cycle.
 
-ProPlex IQ Two cards use physical A–P labels, excluding secondary merge inputs and master-control bindings. Layouts follow the earlier reference: 16 ports in two rows of eight, eight ports in one row, and six ports in two rows of three. NETRON EN12 cards display all twelve ports in one physical row, left to right. Unsupported devices do not display guessed ports. A port opens a read-only detail panel.
+ProPlex IQ Two cards use physical A–P labels, excluding secondary merge inputs and master-control bindings. Layouts follow the earlier reference: 16 ports in two rows of eight, eight ports in one row, and six ports in two rows of three. NETRON EN12 cards display all twelve ports in one physical row, left to right. Unsupported devices do not display guessed ports. A port opens a detail panel; universe editing is enabled only for output ports on a recognized ProPlex routing page.
 
 ### ProPlex IQ Two web monitor
 
-Verified with IQ Two 1616 master firmware 2.36. The app reads `status.htm` to obtain subnet mask, MAC, firmware, direction, universe, RDM and configured DMX rate. It reads the selected protocol controls from `protocol_setup.htm`, supporting sACN, Art-Net and dual mode; status-page protocol text is a fallback. It never submits forms, sends remote-screen controls, changes device settings or generates lighting output. No image recognition is required.
+Verified with IQ Two 1616 master firmware 2.36. The app reads `status.htm` to obtain subnet mask, MAC, firmware, direction, universe, RDM and configured DMX rate. It reads the selected protocol controls from `protocol_setup.htm`, supporting sACN, Art-Net and dual mode; status-page protocol text is a fallback. Normal polling is read-only. When a user explicitly saves output-universe edits, Lux Link reads `port_routing.htm`, submits the complete preserved port-routing form with the requested universes changed, and verifies the node's response. It does not send remote-screen controls or generate lighting output. No image recognition is required.
 
 The supported status-page format identifies physical 4-, 6-, 8- or 16-port models. Only the 16-port hardware has been live-tested. Universe display must be Decimal; other formats remain unknown with a warning. Reported values outside protocol limits are displayed with an error rather than silently changed. The tested node reports port L as sACN universe 0, which is outside the valid sACN range.
 
@@ -62,13 +62,11 @@ Polling requires the updated local LAN app. The hosted website cannot send Art-N
 
 The Mac host and `start:lan` server listen on UDP 5568 (sACN) and 6454 (Art-Net). The **Network** tab groups streams by source IP and summarizes sequential addresses, for example `sACN · 1–64`. Select one universe to expand its current rate, slots, priority, packet count, first 16 levels and last-seen state directly below that universe; selecting another stream closes the previous detail. Devices are organized on the **Devices** page.
 
-## MVR fixtures and test output
+## Future MVR fixture support
 
-The top-level **Fixtures** workspace imports an `.mvr` file into the shared Lux Link server. It reads the MVR patch and embedded GDTF profiles, then groups fixtures by manufacturer, model and DMX mode. The imported rig remains available to every browser using that server. Profiles or modes that cannot be mapped remain visible as unsupported and never receive guessed DMX values.
+The **Fixtures** page is intentionally informational in the current development build. MVR upload, fixture browsing, fixture test output and RDM control are not enabled or included in the packaged server.
 
-Select one or more fixture types, choose sACN or Art-Net, then enable the required test: 100% output, RGB color sweep, reversing pan circle, repeating tilt, Gobo Wheel 1 or Gobo Wheel 2. Gobo tests change slots every second and apply profile-defined rotation only when the GDTF provides a usable rotation range. **Stop all tests** sends three final blackout frames on each active universe before disabling the fixture-test engine; sACN frames are marked stream-terminated. Stop active tests before changing the fixture selection, protocol or priority.
-
-sACN uses the selected 0–200 priority in each packet. Standard ArtDmx has no network-priority field, so Lux Link explicitly reports priority as unavailable when Art-Net is selected. Fixture tests send real multi-universe DMX and can illuminate or move equipment; clear the performance area and choose the correct network connection before enabling them.
+The planned importer will mark an MVR as incomplete whenever a fixture lacks a usable embedded GDTF profile, requested DMX mode or valid patch. Its report will list the affected fixture type and fixture ID, explain which requirement is missing, flag patch overlaps, and keep unsafe fixture output disabled. No fallback channel mapping will be guessed.
 
 In Network, choose sACN or Art-Net, enter a universe and a channel (1–512), then click **Display current value**. The viewer refreshes every 0.5 seconds and shows the latest received DMX value (0–255) and percentage, separately for each source. Zero is a valid reading; missing channels, timed-out streams, and ended sources show no current value. Changing the fields takes effect when you press the button. sACN multicast universes must be in the host's configured subscription range; Art-Net uses native 0-based universe numbers. Stop viewing pauses channel polling.
 
@@ -159,7 +157,7 @@ Artifacts appear in `desktop-dist/`.
 
 Build on an Apple-silicon Mac for the arm64 `.dmg`. The app and installer use the matching icon from `public/app-icon.icns`. The build embeds the current arm64 Node runtime but does not include Electron or Chromium.
 
-Pushing a version tag such as `v0.3.0` triggers the Apple-silicon Mac build. GitHub publishes the release only after tests and the packaged-server startup check succeed. Update `package.json`, these versioned links, and `RELEASE_NOTES.md` before tagging a new version.
+Pushing a version tag such as `v0.3.1` triggers the Apple-silicon Mac build. GitHub publishes the release only after tests and the packaged-server startup check succeed. Update `package.json`, these versioned links, and `RELEASE_NOTES.md` before tagging a new version.
 
 ## Updates
 

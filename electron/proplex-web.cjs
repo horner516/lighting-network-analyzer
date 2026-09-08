@@ -1,9 +1,10 @@
 const http = require('node:http');
 const { validTarget } = require('./node-poller.cjs');
 
-// GET only; never submit forms or send remote-screen keys.
+const readablePages = new Set(['/status.htm', '/protocol_setup.htm', '/port_routing.htm']);
+
 function readPage(ip, page) {
-  if (!validTarget(ip) || !['/status.htm', '/protocol_setup.htm'].includes(page)) return Promise.reject(new RangeError('Unsupported device request.'));
+  if (!validTarget(ip) || !readablePages.has(page)) return Promise.reject(new RangeError('Unsupported device request.'));
   return new Promise((resolve, reject) => {
     const req = http.get({ hostname: ip, port: 80, path: page, method: 'GET', agent: false }, res => {
       if (res.statusCode !== 200) { res.resume(); reject(new Error('ProPlex status unavailable.')); return; }
@@ -20,6 +21,84 @@ function readPage(ip, page) {
     req.on('close', () => clearTimeout(timer));
     req.on('error', reject);
   });
+}
+
+function postPortRouting(ip, body) {
+  if (!validTarget(ip) || typeof body !== 'string' || body.length > 8192) return Promise.reject(new RangeError('Unsupported device request.'));
+  return new Promise((resolve, reject) => {
+    const req = http.request({ hostname: ip, port: 80, path: '/port_routing.htm', method: 'POST', agent: false,
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(body) } }, res => {
+      if (res.statusCode !== 200) { res.resume(); reject(new Error(`ProPlex port update returned HTTP ${res.statusCode}.`)); return; }
+      const chunks = []; let size = 0;
+      res.on('data', chunk => {
+        size += chunk.length;
+        if (size > 131072) req.destroy(new Error('ProPlex update response exceeded size limit.'));
+        else chunks.push(chunk);
+      });
+      res.on('error', reject);
+      res.on('end', () => resolve(Buffer.concat(chunks).toString('latin1')));
+    });
+    const timer = setTimeout(() => req.destroy(new Error('ProPlex port update timed out.')), 4000);
+    req.on('close', () => clearTimeout(timer));
+    req.on('error', reject);
+    req.end(body);
+  });
+}
+
+function namedTag(html, element, name) {
+  return html.match(new RegExp(`<${element}\\b(?=[^>]*\\bname\\s*=\\s*["']${name}["'])[^>]*>`, 'i'))?.[0] || '';
+}
+
+function tagAttribute(tag, name) {
+  return tag.match(new RegExp(`\\b${name}\\s*=\\s*(?:["']([^"']*)["']|([^\\s>]+))`, 'i'))?.slice(1).find(value => value !== undefined) || '';
+}
+
+function parsePortRouting(html) {
+  if (typeof html !== 'string' || html.length > 131072 || !/proplex_logo\.png/i.test(html) || !/action\s*=\s*["']port_routing\.htm["']/i.test(html)) throw new Error('Not a supported ProPlex port-routing page.');
+  const ports = [];
+  for (let index = 0; index < 16; index++) {
+    const prefix = String(index).padStart(2, '0');
+    const universeTag = namedTag(html, 'input', `${prefix}univ`);
+    if (!universeTag) continue;
+    const directionBlock = html.match(new RegExp(`<select\\b(?=[^>]*\\bname\\s*=\\s*["']${prefix}dir["'])[^>]*>([\\s\\S]*?)<\\/select>`, 'i'))?.[1] || '';
+    const selected = [...directionBlock.matchAll(/<option\b([^>]*)>/gi)].find(match => /\sselected(?:\s|=|$)/i.test(match[1])) || [...directionBlock.matchAll(/<option\b([^>]*)>/gi)][0];
+    const direction = selected ? tagAttribute(selected[1], 'value') : '';
+    const priority = Number(tagAttribute(namedTag(html, 'input', `${prefix}pri`), 'value'));
+    const universe = Number(tagAttribute(universeTag, 'value'));
+    const rdmTag = namedTag(html, 'input', `${prefix}rdm`);
+    if (!['in', 'out'].includes(direction) || !Number.isInteger(universe) || universe < 0 || universe > 32767 || !Number.isInteger(priority) || priority < 0 || priority > 200 || !rdmTag) throw new Error(`ProPlex port ${index + 1} settings are incomplete.`);
+    ports.push({ index, direction, universe, priority, rdm: /\schecked(?:\s|=|\/?>)/i.test(rdmTag) });
+  }
+  if (!ports.length) throw new Error('No editable ProPlex ports were reported.');
+  return ports;
+}
+
+async function updatePortUniverses(ip, updates, { read = readPage, submit = postPortRouting } = {}) {
+  if (!validTarget(ip) || !Array.isArray(updates) || !updates.length || updates.length > 16) throw new RangeError('Choose one or more ProPlex output ports to update.');
+  const unique = new Set();
+  const requested = updates.map(item => {
+    const index = Number(item?.index), universe = Number(item?.universe);
+    if (!Number.isInteger(index) || index < 0 || index > 15 || unique.has(index)) throw new RangeError('Each port can only be updated once.');
+    if (!Number.isInteger(universe) || universe < 0 || universe > 32767) throw new RangeError('Choose a universe from 0 to 32767.');
+    unique.add(index); return { index, universe };
+  });
+  const current = parsePortRouting(await read(ip, '/port_routing.htm'));
+  for (const item of requested) {
+    const port = current.find(candidate => candidate.index === item.index);
+    if (!port) throw new RangeError(`Port ${item.index + 1} is not available on this node.`);
+    if (port.direction !== 'out') throw new RangeError(`Port ${item.index + 1} is not configured as an output.`);
+    port.universe = item.universe;
+  }
+  const form = new URLSearchParams();
+  for (const port of current) {
+    const prefix = String(port.index).padStart(2, '0');
+    form.set(`${prefix}dir`, port.direction); form.set(`${prefix}univ`, String(port.universe)); form.set(`${prefix}pri`, String(port.priority));
+    if (port.rdm) form.set(`${prefix}rdm`, 'on');
+  }
+  const response = await submit(ip, form.toString());
+  const verified = parsePortRouting(response);
+  for (const item of requested) if (verified.find(port => port.index === item.index)?.universe !== item.universe) throw new Error(`ProPlex did not confirm the universe change for port ${item.index + 1}.`);
+  return { ip, updated: requested };
 }
 function readStatus(ip) { return readPage(ip, '/status.htm'); }
 function protocolSettings(html) {
@@ -83,6 +162,7 @@ function normalizeProplex(ip, html, setupHtml) {
   if (ports.some(p => p.direction === 'Unknown')) warnings.push('Some port settings were not reported.');
   if (!decimal) warnings.push('Universe display format is unsupported; select Decimal on the device to read universe numbers.');
   return { ip, checkedAt: Date.now(), responding: true, online: true, reachabilitySource: 'web', source: 'ProPlex web monitor', proplex: true,
+    universeEditing: 'proplex-web',
     protocolSource: settings ? 'protocol_setup.htm' : 'status.htm', protocolSettings: settings,
     name: text(html.match(/<b>\s*Node Name\s*<\/b>([\s\S]*?)<\/td>/i)?.[1]) || model,
     description: model, subnetMask, firmware: field('Master'), firmwareCode: null, mac: field('MAC Address'), ports,
@@ -94,4 +174,4 @@ async function pollProplex(ip, { read = readPage } = {}) {
   try { return normalizeProplex(ip, status, await read(ip, '/protocol_setup.htm')); }
   catch { return snapshot; }
 }
-module.exports = { readStatus, readPage, protocolSettings, normalizeProplex, pollProplex };
+module.exports = { readStatus, readPage, postPortRouting, parsePortRouting, updatePortUniverses, protocolSettings, normalizeProplex, pollProplex };

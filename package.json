@@ -3,7 +3,7 @@
   "description": "Lux Link lighting network dashboard and LAN server",
   "author": "Brandon Horner",
   "main": "scripts/native-server.cjs",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "engines": {
     "node": ">=22.13.0"
