@@ -4,7 +4,7 @@ Standalone desktop and web dashboard for monitoring lighting network devices (sA
 
 ## Downloads
 
-**Version 0.3.3:** fixes console additions so the saved device type reaches ETC/MA detection, with clearer pending status text. Live ProPlex port states and the complete 512-channel Network value reader remain included.
+**Version 0.4.0:** adds review-first, read-only discovery for ProPlex/Art-Net nodes and supported MA Lighting or ETC Eos consoles. Live ProPlex port states and the complete 512-channel Network value reader remain included.
 
 The header **Layout** button opens an IP-address list. Drag the grips (mouse or touch), or use the arrow controls, to arrange dashboard cards. Delete marks a device for removal; **Undo deletions** or **Cancel** can reverse draft changes. **Save layout** applies the order and removals server-wide. Removed nodes stop being polled and may be added again by IP. Concurrent edits are rejected if the server list changed while the editor was open. After the first saved layout, automatic imports from legacy browser lists are disabled to prevent deleted devices from reappearing.
 
@@ -16,7 +16,7 @@ The installer includes the app and its LAN server. **No Node.js or developer too
 
 | Platform | Download | Compatibility |
 | --- | --- | --- |
-| macOS | [Download Mac installer](https://github.com/horner516/lighting-network-analyzer/releases/download/v0.3.3/Lux-Link-0.3.3-mac-arm64.dmg) | Apple silicon (M1 or newer), macOS 13+ |
+| macOS | [Download Mac installer](https://github.com/horner516/lighting-network-analyzer/releases/download/v0.4.0/Lux-Link-0.4.0-mac-arm64.dmg) | Apple silicon (M1 or newer), macOS 13+ |
 
 See [all releases and checksums](https://github.com/horner516/lighting-network-analyzer/releases). GitHub's automatic **Source code** downloads are not installable apps.
 
@@ -25,6 +25,10 @@ See [all releases and checksums](https://github.com/horner516/lighting-network-a
 **Device monitoring:** Lux Link reads ProPlex IQ Two web-monitor status and NETRON web API configuration, with physical port cards. Devices are organized into Console, Nodes and Switches tabs. Console polling detects MA Lighting or ETC before selecting the vendor-specific read-only path. The Mac MA integration reads session, show-file and status text from the Web Remote Network view; ETC Eos Family detection uses the documented OSC TCP service without sending commands. Both correlate active DMX streams by source IP. Add by IP saves a device and requests its available identity and port information. No simulated devices are included. See the [changelog](CHANGELOG.md).
 
 ## Device cards and polling
+
+Use **Discover Devices** on the Devices toolbar to select an active network connection and run a standard scan. Lux Link broadcasts a read-only ArtPoll on that adapter, collects node replies and also checks recognizable MA/ETC sACN sources against its supported console fingerprints. Results are never added automatically: review their identity evidence, select the wanted rows and choose **Add Selected**.
+
+Enable **Deep scan** to look for supported devices that are powered on but not currently sending lighting traffic. Deep scan is limited to the selected adapter's `/24` (254 possible hosts) and checks only the ProPlex/NETRON web service, MA Web Remote and ETC Eos OSC service ports. It sends no OSC commands, joins no MA session, changes no node settings and generates no DMX. Broadcast discovery does not cross routed VLANs; firewall rules, Wi-Fi client isolation and disabled services can hide devices. Use **Add by IP** for known routed addresses.
 
 Saved nodes and switches are polled through their live web/API interface when the server starts and when added. A single server-owned polling cycle continues even without a browser open, with 15 seconds between completed sequential cycles. **Poll Nodes** beside the Nodes heading requests an immediate node refresh. Consoles are polled once when added and only on demand afterward with **Poll Consoles** beside the Consoles heading. The global **Poll All Devices** button refreshes consoles, nodes and switches in one shared sequential cycle. Simultaneous requests are deduplicated; browsers only read cached snapshots. Art-Net remains a receive-only traffic source on Network, not a source for device configuration.
 
@@ -64,7 +68,7 @@ When an added Console is not an MA Web Remote, Lux Link checks the ETC-documente
 
 This identifies the Eos software family, including console and client-class stations that expose the service; it does not claim a specific hardware model. Console name and software version require ACN/SLP discovery, which is not implemented yet.
 
-Polling requires the updated local LAN app. The hosted website cannot send Art-Net packets onto your LAN. Supported target addresses are private LAN hosts and the lighting convention of 2.x addresses. Only explicitly added IPs are queried; this is not a subnet scanner.
+Polling requires the updated local LAN app. The hosted website cannot send Art-Net packets onto your LAN. Supported target addresses are private LAN hosts and the lighting convention of 2.x addresses. Standard discovery queries broadcast replies and recognizable MA/ETC sACN source IPs. The explicitly enabled Deep scan is a bounded `/24` service scan on the selected adapter; it reports only devices that pass a supported read-only fingerprint.
 
 ## Live sACN / Art-Net signals
 
@@ -165,7 +169,7 @@ Artifacts appear in `desktop-dist/`.
 
 Build on an Apple-silicon Mac for the arm64 `.dmg`. The app and installer use the matching icon from `public/app-icon.icns`. The build embeds the current arm64 Node runtime but does not include Electron or Chromium.
 
-Pushing a version tag such as `v0.3.3` triggers the Apple-silicon Mac build. GitHub publishes the release only after tests and the packaged-server startup check succeed. Update `package.json`, these versioned links, and `RELEASE_NOTES.md` before tagging a new version.
+Pushing a version tag such as `v0.4.0` triggers the Apple-silicon Mac build. GitHub publishes the release only after tests and the packaged-server startup check succeed. Update `package.json`, these versioned links, and `RELEASE_NOTES.md` before tagging a new version.
 
 ## Updates
 
@@ -180,4 +184,4 @@ The page now shows the active access URL at the top of the dashboard header and 
 ## Important notes
 
 - No simulated devices or readings are included. NETRON on-time is reported by the device, not inferred.
-- Automatic device discovery and device hardware-health monitoring remain separate, unimplemented capabilities. The included listeners report observed lighting streams only.
+- Discovery is read-only identification, not hardware-health monitoring. Device configuration and online state still come from the supported live pollers after a selected result is added.

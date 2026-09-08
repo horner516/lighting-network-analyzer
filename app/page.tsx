@@ -5,6 +5,7 @@ import { Activity, Plus, RefreshCw, Search } from 'lucide-react';
 import { DeviceCards, type NodeInfo } from '@/components/device-cards';
 import { ConsoleCards } from '@/components/console-cards';
 import { DeviceLayout } from '@/components/device-layout';
+import { DeviceDiscovery } from '@/components/device-discovery';
 import { SignalMonitor } from '@/components/signal-monitor';
 import { FixtureWorkspace } from '@/components/fixture-workspace';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -193,6 +194,7 @@ export default function Home() {
         <TabsTrigger value="fixtures" className="px-4 text-slate-300 data-active:bg-teal-300/15 data-active:text-teal-200">Fixtures</TabsTrigger>
       </TabsList>
             {view === 'devices' && <div className="flex w-full flex-wrap items-center gap-2 md:w-auto"><div className="relative min-w-[180px] flex-1 md:w-60"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16}/><Input aria-label="Search devices" value={query} onChange={event => setQuery(event.target.value)} placeholder="Search name or IP…" className="border-white/10 bg-white/[.04] pl-9"/></div>
+              <DeviceDiscovery onAdd={async devices => { await inventoryRequest('/api/devices',{devices}); }}/>
               <Dialog open={addOpen} onOpenChange={open => { setAddOpen(open); if (!open) setAddError(''); }}>
                 <DialogTrigger render={<Button className="shrink-0 bg-teal-300 text-slate-950 hover:bg-teal-200" />}><Plus size={15}/> Add by IP</DialogTrigger>
                 <DialogContent className="border border-white/10 bg-[#171d22] text-slate-100 sm:max-w-md"><form onSubmit={addDevice}>

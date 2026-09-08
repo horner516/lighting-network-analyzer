@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.0 — 2026-09-08
+
+- Added a review-first **Discover Devices** workspace to the Devices toolbar. Select an active network adapter, scan again, review identity evidence, choose individual results and add the selection to the shared server inventory.
+- Standard discovery sends read-only ArtPoll requests to the selected adapter's directed broadcast and collects unsolicited ArtPollReply packets. ProPlex replies are validated through the existing live web monitor before their configuration is shown.
+- Active sACN source addresses with recognizable MA/ETC source names are checked against the existing read-only MA Web Remote and ETC Eos OSC fingerprints. Unknown traffic sources are not automatically labeled as consoles or added.
+- Added an opt-in **Deep scan** for silent devices. It is deliberately bounded to the selected adapter's `/24`, probes only HTTP/Web Remote and ETC OSC service ports, and never sends console commands, joins an MA session, changes node configuration or generates DMX.
+- Discovery results identify already-configured IPs and deduplicate simultaneous scans. Device additions continue to use the server-owned inventory, so every browser sees the same devices and only the Lux Link server performs polling.
+
 ## 0.3.3 — 2026-09-08
 
 - Fixed console additions being routed through the generic node poller by the LAN server. The saved Console type now reaches vendor detection, allowing ETC and MA cards to leave their pending state. Pending cards now read **Detecting Console Info**.

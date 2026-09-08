@@ -43,7 +43,7 @@ function createSignalListener({ universeSpec = process.env.LNA_SACN_UNIVERSES ||
   }) });
   const protocols = { 'sACN': { port: ports.sacn, status: 'starting', error: '', received: 0, ignored: 0, peakRate: 0 }, 'Art-Net': { port: ports.artnet, status: 'starting', error: '', received: 0, ignored: 0, peakRate: 0 } };
   const protocolBuckets = { 'sACN': [], 'Art-Net': [] };
-  const interfaces = Object.entries(networkInterfaces()).flatMap(([name, list]) => (list || []).filter(n => n.family === 'IPv4' && !n.internal).map(n => ({ name, address: n.address })));
+  const interfaces = Object.entries(networkInterfaces()).flatMap(([name, list]) => (list || []).filter(n => n.family === 'IPv4' && !n.internal).map(n => ({ name, address: n.address, netmask: n.netmask })));
   let universes = [], closed = false, droppedSources = 0, configError = '';
   const observableSacnUniverses = new Set();
   try {
@@ -98,7 +98,7 @@ function createSignalListener({ universeSpec = process.env.LNA_SACN_UNIVERSES ||
     }
     const primary = await bind();
     if (!primary) return;
-    if (protocol === 'Art-Net') artnetSocket = primary;
+    if (protocol === 'Art-Net') { artnetSocket = primary; try { primary.setBroadcast(true); } catch {} }
     p.status = 'listening';
     if (protocol === 'sACN' && joinMulticast) {
       const candidates = interfaceIp ? interfaces.filter(n => n.address === interfaceIp) : interfaces;
@@ -158,6 +158,6 @@ function createSignalListener({ universeSpec = process.env.LNA_SACN_UNIVERSES ||
     return { available: true, sampledAt: data.sampledAt, protocol, universe, start, end: start + count - 1, listenerStatus: protocols[protocol].status, subscribed: protocol === 'Art-Net' || universes.includes(universe), streams };
   }
   function close() { if (closed) return; closed = true; nodePoller.close(); for (const s of sockets) { try { s.close(); } catch {} } for (const p of Object.values(protocols)) p.status = 'stopped'; }
-  return { ready, snapshot, channelValue, channelRange, pollNode: nodePoller.poll, close, ingest };
+  return { ready, snapshot, channelValue, channelRange, pollNode: nodePoller.poll, discoverNodes: nodePoller.discover, close, ingest };
 }
 module.exports = { createSignalListener, decodeSacn, decodeArtNet, parseUniverses };

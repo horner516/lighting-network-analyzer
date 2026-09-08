@@ -42,14 +42,22 @@ function decodeReply(b) {
 }
 function createNodePoller({ send, now = Date.now, waitMs = 3000 }) {
   const pending = new Map(), cache = new Map();
+  let discovery = null;
   function receive(b, remote) {
-    const item = pending.get(remote.address);
-    if (!item) return false;
     const reply = decodeReply(b);
     if (!reply) return false;
-    if (reply.kind === 'ip') item.subnetMask = reply.subnetMask;
-    else item.groups.set(reply.bindIndex, reply);
-    return true;
+    let accepted = false;
+    if (discovery && reply.kind === 'poll' && validTarget(remote.address)) {
+      if (!discovery.groups.has(remote.address)) discovery.groups.set(remote.address, new Map());
+      discovery.groups.get(remote.address).set(reply.bindIndex, reply); accepted = true;
+    }
+    const item = pending.get(remote.address);
+    if (item) {
+      if (reply.kind === 'ip') item.subnetMask = reply.subnetMask;
+      else item.groups.set(reply.bindIndex, reply);
+      accepted = true;
+    }
+    return accepted;
   }
   function poll(ip) {
     if (!validTarget(ip)) return Promise.reject(new RangeError('Use a private LAN or 2.x lighting-network IPv4 host address.'));
@@ -89,7 +97,32 @@ function createNodePoller({ send, now = Date.now, waitMs = 3000 }) {
     Promise.all(queries().map(packet => send(packet, ip))).catch(error => { if (pending.get(ip) === item) item.finish(error.message); });
     return promise;
   }
-  function close() { for (const item of pending.values()) item.finish('Receiver stopped.'); }
-  return { poll, receive, close };
+  function discover(targets, discoveryWaitMs = 2500) {
+    if (discovery) return discovery.promise;
+    if (!Array.isArray(targets) || !targets.length || targets.length > 32 || targets.some(ip => !isIPv4(ip))) return Promise.reject(new RangeError('Discovery requires one or more IPv4 broadcast targets.'));
+    const item = { groups: new Map() };
+    item.promise = new Promise(resolve => {
+      item.finish = () => {
+        clearTimeout(item.timer);
+        if (discovery === item) discovery = null;
+        const found = [...item.groups].map(([ip, groups]) => {
+          const replies = [...groups.values()].sort((a, b) => a.bindIndex - b.bindIndex);
+          const first = replies[0];
+          return { ip, name:first?.name || '', description:first?.description || '', report:first?.report || '', firmwareCode:first?.firmwareCode ?? null,
+            oemCode:first?.oemCode ?? null, manufacturerCode:first?.manufacturerCode ?? null, mac:first?.mac || '', replies:replies.length,
+            proplex:/^(?:IQ Two|ProPlex)\b/i.test(`${first?.description || ''} ${first?.name || ''}`) };
+        });
+        found.sort((a, b) => a.ip.localeCompare(b.ip, undefined, { numeric:true }));
+        resolve(found);
+      };
+      item.timer = setTimeout(() => item.finish(), discoveryWaitMs);
+    });
+    discovery = item;
+    const packet = queries()[0];
+    Promise.all([...new Set(targets)].map(ip => send(packet, ip))).catch(() => {});
+    return item.promise;
+  }
+  function close() { for (const item of pending.values()) item.finish('Receiver stopped.'); discovery?.finish(); }
+  return { poll, discover, receive, close };
 }
 module.exports = { createNodePoller, decodeReply, queries, validTarget };

@@ -108,3 +108,17 @@ test('configured nodes can update output universes through the guarded server en
     assert.equal((await fetch(lan.url+'/api/devices/ports',{method:'POST',headers:{Origin:'https://other.example','Content-Type':'application/json'},body:'{}'})).status,403);
   } finally { lan.server.closeAllConnections(); await new Promise(resolve => lan.server.close(resolve)); }
 });
+
+test('discovery endpoint is same-origin, server-owned and passes configured devices', async () => {
+  let request;
+  const lan = await startLanServer({ root, host:'127.0.0.1', preferredPort:48842,
+    discoveryFactory:() => ({ scan:async options => { request=options; return {scannedAt:1,interface:options.address,deep:options.deep,results:[]}; } }),
+    listenerOptions:{ports:{sacn:0,artnet:0},bindAddress:'127.0.0.1',joinMulticast:false} });
+  try {
+    await fetch(lan.url+'/api/devices',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ip:'192.168.1.101',deviceType:'Node'})});
+    const response = await fetch(lan.url+'/api/discovery',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({address:'',deep:false})});
+    assert.equal(response.status,200);
+    assert.deepEqual(request,{address:'',deep:false,configured:['192.168.1.101']});
+    assert.equal((await fetch(lan.url+'/api/discovery',{method:'POST',headers:{Origin:'https://other.example','Content-Type':'application/json'},body:'{}'})).status,403);
+  } finally { lan.server.closeAllConnections(); await new Promise(resolve => lan.server.close(resolve)); }
+});

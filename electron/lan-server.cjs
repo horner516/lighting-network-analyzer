@@ -6,6 +6,7 @@ const { createSignalListener } = require('./signal-listener.cjs');
 const { createSignalTransmitter } = require('./signal-transmitter.cjs');
 const { createDevicePoller } = require('./netron-api.cjs');
 const { createDeviceInventory } = require('./device-inventory.cjs');
+const { createDeviceDiscovery } = require('./device-discovery.cjs');
 const { validTarget } = require('./node-poller.cjs');
 const { createReleaseChecker } = require('../lib/release-check.cjs');
 const { version } = require('../package.json');
@@ -19,17 +20,19 @@ function addresses(port, host) {
   return { port, urls: ips.map(ip => `http://${ip.includes(':') ? `[${ip}]` : ip}:${port}`) };
 }
 
-async function startLanServer({ root, preferredPort = 47652, host = '0.0.0.0', listenerOptions = {}, deviceStorePath = null, pollDevice, updatePortUniverses, inventoryIntervalMs = 15000, releaseRequest, devicePollerFactory = createDevicePoller }) {
+async function startLanServer({ root, preferredPort = 47652, host = '0.0.0.0', listenerOptions = {}, deviceStorePath = null, pollDevice, updatePortUniverses, inventoryIntervalMs = 15000, releaseRequest, devicePollerFactory = createDevicePoller, discoveryFactory = createDeviceDiscovery }) {
   if (!Number.isInteger(preferredPort) || preferredPort < 1024 || preferredPort > 65535) throw new Error('Server port must be an integer from 1024 to 65535.');
   const base = path.resolve(root);
   if (!fs.existsSync(path.join(base, 'index.html'))) throw new Error('The bundled dashboard is missing. Reinstall the app.');
   let listener, transmitter, selectedInterface = listenerOptions.interfaceIp || process.env.LNA_INTERFACE || '';
   const checkRelease = createReleaseChecker(version, releaseRequest);
   const devicePoller = devicePollerFactory();
-  const inventory = createDeviceInventory({ file: deviceStorePath, poll: pollDevice || ((ip, options) => devicePoller.poll(ip, options)), intervalMs: inventoryIntervalMs });
+  const poll = pollDevice || ((ip, options) => devicePoller.poll(ip, options));
+  const inventory = createDeviceInventory({ file: deviceStorePath, poll, intervalMs: inventoryIntervalMs });
+  const discovery = discoveryFactory({ interfaces: availableInterfaces, artDiscover: targets => listener.discoverNodes(targets), signalSnapshot: () => listener.snapshot(), pollDevice: poll });
   const updateNodePorts = updatePortUniverses || ((ip, updates) => devicePoller.updatePortUniverses(ip, updates));
   function availableInterfaces() {
-    return Object.entries(networkInterfaces()).flatMap(([name, list]) => (list || []).filter(item => item.family === 'IPv4' && !item.internal).map(item => ({ name, address: item.address })));
+    return Object.entries(networkInterfaces()).flatMap(([name, list]) => (list || []).filter(item => item.family === 'IPv4' && !item.internal).map(item => ({ name, address: item.address, netmask:item.netmask })));
   }
   function networkSnapshot() { return { available: true, selected: selectedInterface, interfaces: availableInterfaces(), transmitterEnabled: transmitter?.snapshot().enabled === true }; }
   async function startNetworking(address) {
@@ -50,7 +53,7 @@ async function startLanServer({ root, preferredPort = 47652, host = '0.0.0.0', l
     try { pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname); }
     catch { res.writeHead(400); res.end(); return; }
     const foreignOrigin = req.headers['sec-fetch-site'] === 'cross-site' || (req.headers.origin && req.headers.origin !== `http://${req.headers.host}`);
-    if (req.method === 'POST' && ['/api/devices', '/api/devices/refresh', '/api/devices/layout', '/api/devices/ports', '/api/transmitter', '/api/network-interface'].includes(pathname)) {
+    if (req.method === 'POST' && ['/api/devices', '/api/devices/refresh', '/api/devices/layout', '/api/devices/ports', '/api/transmitter', '/api/network-interface', '/api/discovery'].includes(pathname)) {
       res.setHeader('Content-Type', 'application/json');
       if (foreignOrigin) { res.writeHead(403); res.end('{}'); return; }
       if (!/^application\/json(?:;|$)/i.test(req.headers['content-type'] || '')) { res.writeHead(415); res.end('{}'); return; }
@@ -62,6 +65,10 @@ async function startLanServer({ root, preferredPort = 47652, host = '0.0.0.0', l
           const body = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
           if (pathname === '/api/transmitter') { res.end(JSON.stringify(transmitter.update(body))); return; }
           if (pathname === '/api/network-interface') { await selectNetworkInterface(body.address); res.end(JSON.stringify(networkSnapshot())); return; }
+          if (pathname === '/api/discovery') {
+            const result = await discovery.scan({ address:body.address || '', deep:body.deep === true, configured:inventory.snapshot().devices.map(device => device.ip) });
+            res.end(JSON.stringify(result)); return;
+          }
           if (pathname === '/api/devices/ports') {
             const configured = inventory.snapshot().devices.find(device => device.ip === body.ip);
             if (!configured || configured.deviceType !== 'Node') throw new RangeError('Add this address as a node before editing its ports.');

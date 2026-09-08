@@ -54,3 +54,14 @@ test('only queried IPs are accepted; IP enquiry reports mask and missing replies
   await assert.rejects(poller.poll('127.0.0.1'), RangeError);
   poller.close();
 });
+test('broadcast discovery collects unsolicited ArtPollReply devices without programming them', async () => {
+  const sent = [];
+  const poller = createNodePoller({ send:async (packet, ip) => sent.push({ packet, ip }) });
+  const found = poller.discover(['192.168.1.255'], 15);
+  assert.equal(poller.receive(reply({ name:'A|IQ Two 1616', description:'IQ Two 1616 2X' }), { address:'192.168.1.101' }), true);
+  assert.equal(poller.receive(reply({ name:'Other', description:'Generic node' }), { address:'192.168.1.102' }), true);
+  const devices = await found;
+  assert.equal(sent.length, 1); assert.equal(sent[0].ip, '192.168.1.255'); assert.equal(sent[0].packet.readUInt16LE(8), 0x2000);
+  assert.equal(devices.length, 2); assert.equal(devices[0].proplex, true); assert.equal(devices[1].proplex, false);
+  poller.close();
+});
